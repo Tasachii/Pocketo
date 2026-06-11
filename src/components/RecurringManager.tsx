@@ -143,15 +143,21 @@ function RecurringDialog({
     categoryId != null && cats.some((c) => c.id === categoryId)
       ? categoryId
       : cats[0]?.id;
+  // pockets มาจาก useLiveQuery ซึ่งยังว่างตอน dialog mount —
+  // ห้ามอ่าน main?.id ผ่าน useState ตอนเริ่ม ไม่งั้นค่าค้าง undefined ถาวร
+  const effectivePocketId =
+    pocketId != null && pockets.some((p) => p.id === pocketId)
+      ? pocketId
+      : main?.id;
 
   const save = async () => {
     const amount = parseAmount(amountStr);
     if (amount === null || amount <= 0) return setError("ใส่จำนวนเงินให้ถูกต้อง");
-    if (pocketId == null) return setError("เลือกกล่อง");
+    if (effectivePocketId == null) return setError("เลือกกล่อง");
     const fields = {
       type,
       amount,
-      pocketId,
+      pocketId: effectivePocketId,
       categoryId: effectiveCatId,
       note: note.trim() || undefined,
       freq,
@@ -299,7 +305,7 @@ function RecurringDialog({
           <Field label="กล่อง">
             <select
               className={inputCls}
-              value={pocketId}
+              value={effectivePocketId}
               onChange={(e) => setPocketId(Number(e.target.value))}
             >
               {pockets.map((p) => (
