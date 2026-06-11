@@ -102,15 +102,11 @@ installable offline PWA, OG preview, CI + auto-deploy. See [`CHANGELOG.md`](CHAN
 - **Acceptance:** New allowances have unit tests at their caps; existing 40(1) results unchanged;
   a new `TAX_YEAR_*` can be added without touching `calcThaiTax`.
 
-### 7. 🟢 English locale (i18n) — M
-- **Why:** UI strings are hard-coded Thai; blocks non-Thai users and showcasing the project.
-- **Where:** everywhere user-facing (screens + components). Introduce `src/i18n/` with a simple
-  dictionary + `useT()` hook; start by extracting strings, not adding a heavy framework.
-- **Approach:** Keep Thai as default; add `en`. Persist choice in `localStorage` next to theme
-  (`src/state/useTheme.ts` is the pattern). Money/date formatting already centralised in
-  `src/core/money.ts` and `src/db/data.ts`.
-- **Acceptance:** Language switch in Settings; no hard-coded user-facing string left in the
-  visited screens; both languages pass the a11y audit.
+### 7. ✅ English locale (i18n) — DONE
+Shipped: full Thai/English UI via `src/i18n` (`th.ts`/`en.ts` + `useT()`), switchable in
+Settings and on the welcome screen, locale-aware dates/tax year. Remaining nice-to-have:
+translate the **default category names** too (currently kept as user data) — would need a
+migration or a "names are translation keys until edited" scheme.
 
 ---
 

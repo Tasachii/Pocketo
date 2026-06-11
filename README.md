@@ -25,7 +25,8 @@ It is a static web app: no server, no account, no tracking. Everything lives in 
 
 - Stack: React 18 · TypeScript (strict) · Vite · Tailwind CSS · Dexie (IndexedDB) · vite-plugin-pwa
 - No chart library, no UI kit — charts are hand-rolled SVG; JS bundle ≈ 100 KB gzip
-- Tested with 77 unit tests (Vitest) on the pure engines and 11 end-to-end + accessibility tests (Playwright)
+- Fully bilingual (Thai / English), dark-first, installable and offline
+- Tested with 77 unit tests (Vitest) on the pure engines and 12 end-to-end + accessibility tests (Playwright)
 
 > **Your data lives only on this device.** There is no cloud copy. Browsers can evict local
 > storage for sites left unused for a long time — so installing the app, granting persistent
@@ -91,6 +92,8 @@ node scripts/capture-screens.mjs   # regenerate doc screenshots (dev server on :
 **Backup.** Settings → export writes a JSON file — you can set a password to encrypt it (AES-GCM). Import restores it (replaces everything, with confirmation; asks for the password if the file is encrypted). A banner reminds you if you haven't exported for 30 days.
 
 **Theme.** The icon at the top-right of Home cycles dark → light → system. Dark is the default.
+
+**Language.** The app is fully bilingual (Thai / English). Switch in Settings → Language, or from the toggle on the welcome screen. Dates and the tax year follow the language (Buddhist era in Thai, Gregorian in English); your own category names are kept as you typed them.
 
 ---
 

@@ -3,6 +3,17 @@
 All notable changes to Pocketo are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Bilingual UI (Thai / English).** Every screen is translated via a typed `src/i18n`
+  dictionary and a `useT()` hook. Switch in Settings → Language or from the welcome screen.
+  Dates and the tax year are locale-aware (Buddhist era in Thai, Gregorian in English).
+  Pure engines stay i18n-free: the tax engine returns structured note codes and the share
+  card receives translated labels from the UI. Default category names remain user data.
+
+---
+
 ## [0.1.0] — 2026-06-11
 
 First public version.

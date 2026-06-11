@@ -38,6 +38,7 @@ Most personal finance apps are bloated, require sign-up, sync financial data to 
 - JSON export / import backup — optionally password-encrypted (AES-GCM) — with a 30-day reminder banner
 - Shareable monthly summary card rendered to a 1080×1350 PNG
 - First-run onboarding and an Open Graph preview image for shared links
+- Fully bilingual UI (Thai / English) with locale-aware dates and tax year (Buddhist era ↔ Gregorian)
 - Dark / light / system themes; installable PWA; 100% offline
 
 **Screenshots**
@@ -206,6 +207,7 @@ classDiagram
 | `src/db/db.ts` | `PocketoDB` (Dexie subclass), schema versions, first-run seeding |
 | `src/db/data.ts` | Application services: `saveQuickTx`, `calcBalances`, `deleteTxCascade`/`restoreTxs`, `updateTx` (re-splits allocations), `applyDueRecurring`, `transfer`, Thai date helpers |
 | `src/state/useTheme.ts` | Dark / light / system theme with persistence and `prefers-color-scheme` tracking |
+| `src/i18n/` | Bilingual dictionary (`th.ts`/`en.ts`) + `useT()` hook; module-level store so the whole UI re-renders on language change; locale-aware month/date/year helpers |
 | `src/screens/` | `Home`, `Pockets`, `Reports`, `Tax`, `History` (search/filter/edit), `Settings` |
 | `src/components/` | `QuickAdd` (keypad flow), `TxEditor`, `RecurringManager`, `Onboarding` (first-run), `EnsoRing`, `Donut`, `NumberTicker`, `Stamp`, `Feedback` (in-app confirm/prompt + undo toasts), `TabBar`, `Modal`, `Icons` |
 | `src/components/Onboarding.tsx` | First-run welcome cards; completion flag in `localStorage` |
