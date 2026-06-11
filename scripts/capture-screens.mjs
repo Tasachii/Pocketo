@@ -26,6 +26,13 @@ async function addTx(digits, category, income = false) {
   await page.getByText("แตะหมวดเพื่อบันทึกทันที").waitFor({ state: "hidden" });
 }
 
+// ── onboarding (โผล่ครั้งแรก) ──
+await page.getByText("ยินดีต้อนรับสู่ Pocketo").waitFor();
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${OUT}/onboarding.png` });
+await btn("ข้าม").click();
+await page.getByText("ยอดรวมทุกกล่อง").waitFor();
+
 // ── ปั้นข้อมูลตัวอย่าง ──
 // กล่องเงิน 2 ใบ พร้อมเป้าและกฎแบ่งอัตโนมัติ
 await btn("กล่องเงิน").click();
@@ -85,16 +92,18 @@ await btn("กล่องเงิน").click();
 await page.waitForTimeout(1100); // รอ ensō วาดครบ
 await page.screenshot({ path: `${OUT}/pockets.png` });
 
+// reports/tax ถ่ายขนาดจอมือถือปกติ (ไม่ fullPage) ให้ทุกภาพในแกลเลอรี
+// สัดส่วนเท่ากัน ไม่ยืดเวลาแสดงใน README
 await btn("รายงาน").click();
 await page.waitForTimeout(1000);
-await page.screenshot({ path: `${OUT}/reports.png`, fullPage: true });
+await page.screenshot({ path: `${OUT}/reports.png` });
 
 await btn("ภาษี").click();
 await page.getByLabel("เงินได้ทั้งปี (เงินเดือน/ค่าจ้าง)").fill("480000");
 await page.getByLabel("ภาษีหัก ณ ที่จ่ายทั้งปี").fill("9000");
 await page.getByLabel("SSF").fill("30000");
 await page.waitForTimeout(500);
-await page.screenshot({ path: `${OUT}/tax.png`, fullPage: true });
+await page.screenshot({ path: `${OUT}/tax.png` });
 
 await browser.close();
 console.log("screenshots saved to", OUT);

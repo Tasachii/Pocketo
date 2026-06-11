@@ -35,19 +35,24 @@ Most personal finance apps are bloated, require sign-up, sync financial data to 
 - Recurring transactions (weekly / monthly / yearly) with catch-up posting for months the app wasn't opened
 - Thai personal income tax estimator: 8 progressive brackets, standard 50% expense deduction, allowance caps (SSF, RMF, Thai ESG, PVD, insurance, social security, home-loan interest, donations), withholding-tax refund, and a "buy X more, save Y" simulator
 - Full transaction history with search, filters, editing, and undo-able deletes
-- JSON export / import backup with a 30-day reminder banner
+- JSON export / import backup — optionally password-encrypted (AES-GCM) — with a 30-day reminder banner
 - Shareable monthly summary card rendered to a 1080×1350 PNG
+- First-run onboarding and an Open Graph preview image for shared links
 - Dark / light / system themes; installable PWA; 100% offline
 
 **Screenshots**
 
-| Home (dark) | Home (light) | Quick add |
+| Onboarding | Home (dark) | Home (light) |
 |---|---|---|
-| ![Home dark](docs/screenshots/home-dark.png) | ![Home light](docs/screenshots/home-light.png) | ![Quick add](docs/screenshots/quick-add.png) |
+| ![Onboarding](docs/screenshots/onboarding.png) | ![Home dark](docs/screenshots/home-dark.png) | ![Home light](docs/screenshots/home-light.png) |
 
-| Pockets | Reports | Tax estimator |
+| Quick add | Pockets | Reports |
 |---|---|---|
-| ![Pockets](docs/screenshots/pockets.png) | ![Reports](docs/screenshots/reports.png) | ![Tax](docs/screenshots/tax.png) |
+| ![Quick add](docs/screenshots/quick-add.png) | ![Pockets](docs/screenshots/pockets.png) | ![Reports](docs/screenshots/reports.png) |
+
+| Tax estimator | | |
+|---|---|---|
+| ![Tax](docs/screenshots/tax.png) | | |
 
 ---
 
@@ -176,8 +181,13 @@ classDiagram
 - **Money is stored as integer satang.** Floating-point baht would drift (`0.1 + 0.2 ≠ 0.3`); integers can't.
 - **Pocket balances are never stored.** They are always derived by folding the transaction log (`calcBalances`), so a balance can never desync from its history.
 - **Auto-allocation is linked, not implicit.** When income enters the main pocket, generated TRANSFER rows carry a `parentId` back to the income row — so editing the income re-splits them and deleting it cascades (with undo restoring the whole set).
-- **All correctness-critical logic is a pure function** under `src/core/` with no I/O, which is what makes the 70+ unit tests cheap and trustworthy.
+- **All correctness-critical logic is a pure function** under `src/core/` with no I/O, which is what makes the 77 unit tests cheap and trustworthy.
 - **Tax rules are data, not code.** Brackets and allowance caps live in a per-tax-year config object (`TAX_YEAR_2568`), so next year's rules are a config change, not a logic change.
+
+> The diagram above is intentionally drawn at the **domain level**: this is a functional
+> TypeScript codebase, so the engines (tax, allocation, recurring, backup) are modules of pure
+> functions rather than instantiated classes. `PocketoDB` is the one real `class` (a Dexie
+> subclass). The engine boxes represent cohesive modules and their relationships to the data.
 
 ---
 
@@ -191,13 +201,16 @@ classDiagram
 | `src/core/tax.ts` | Thai PIT engine: progressive brackets, expense deduction, allowance caps incl. the combined 500k retirement cap, WHT refund, marginal-rate simulator |
 | `src/core/recurring.ts` | Schedule engine: weekly/monthly/yearly due dates, short-month and leap-year clamping (31st → Feb 28/29), multi-period catch-up |
 | `src/core/backup.ts` | Versioned JSON export/import (v2 accepts v1 files), atomic replace, download helper |
+| `src/core/crypto.ts` | Password-encrypted backups: PBKDF2 (150k) + AES-GCM via Web Crypto |
 | `src/core/share.ts` | Canvas renderer for the 1080×1350 monthly summary PNG |
 | `src/db/db.ts` | `PocketoDB` (Dexie subclass), schema versions, first-run seeding |
 | `src/db/data.ts` | Application services: `saveQuickTx`, `calcBalances`, `deleteTxCascade`/`restoreTxs`, `updateTx` (re-splits allocations), `applyDueRecurring`, `transfer`, Thai date helpers |
 | `src/state/useTheme.ts` | Dark / light / system theme with persistence and `prefers-color-scheme` tracking |
 | `src/screens/` | `Home`, `Pockets`, `Reports`, `Tax`, `History` (search/filter/edit), `Settings` |
-| `src/components/` | `QuickAdd` (keypad flow), `TxEditor`, `RecurringManager`, `EnsoRing`, `Donut`, `NumberTicker`, `Stamp`, `Feedback` (in-app confirm + undo toasts), `TabBar`, `Modal`, `Icons` |
+| `src/components/` | `QuickAdd` (keypad flow), `TxEditor`, `RecurringManager`, `Onboarding` (first-run), `EnsoRing`, `Donut`, `NumberTicker`, `Stamp`, `Feedback` (in-app confirm/prompt + undo toasts), `TabBar`, `Modal`, `Icons` |
+| `src/components/Onboarding.tsx` | First-run welcome cards; completion flag in `localStorage` |
 | `scripts/gen-icons.mjs` | PWA icon generator — writes PNGs with raw chunks + zlib, zero dependencies |
+| `scripts/gen-og.mjs` | Renders the 1200×630 Open Graph image via Playwright |
 | `scripts/capture-screens.mjs` | Seeds demo data through the real UI and captures the screenshots used in these docs |
 
 ---
@@ -210,7 +223,7 @@ classDiagram
 - **Automatic entry** from recurring rules: on every app launch, `applyDueRecurring` posts every due occurrence since the last run — including months the app was never opened — exactly once (`lastPosted` makes posting idempotent)
 - **Automatic allocation**: income arriving in the main pocket generates linked TRANSFER rows according to each pocket's `allocPercent`
 - Stored in **IndexedDB** via Dexie with explicit schema versions (v1 → v2 migration adds recurring); amounts as integer satang, dates as ISO `YYYY-MM-DD` strings
-- **Backup** is a single portable JSON file with a schema version; import validates and replaces atomically
+- **Backup** is a single portable JSON file with a schema version (optionally AES-GCM password-encrypted); import validates and replaces atomically
 
 ### 5.2 What the statistics show
 
@@ -229,7 +242,8 @@ All aggregates are computed on read from the raw log — nothing is double-booke
 ## 6. Design System (why it looks the way it does)
 
 - **Principles:** *Ma* (negative space does the emphasis work — the home screen shows exactly four things) and *Kanso* (no borders, no heavy shadows; layers are separated by tone alone), with one deliberate loud accent — the vermilion FAB — on an otherwise quiet screen
-- **Palette:** named after traditional Japanese colors — washi paper light theme, sumi ink dark theme (default), 朱 *shu* vermilion accent, 抹茶 matcha for income, 紅 *beni* for expense, 藍 indigo for transfers; both themes meet WCAG AA contrast
+- **Palette:** named after traditional Japanese colors — washi paper light theme, sumi ink dark theme (default), 朱 *shu* vermilion accent, 抹茶 matcha for income, 紅 *beni* for expense, 藍 indigo for transfers
+- **Accessibility:** every text colour is tuned to meet **WCAG 2.1 AA** (4.5:1) on the surface it actually sits on, verified by an automated axe audit across all screens in both themes (`e2e/a11y.spec.ts`). The one documented exception is the vermilion brand accent used on buttons and small highlights — it meets the 3:1 large-text / non-text UI threshold but not 4.5:1, a deliberate brand choice the audit explicitly allows and tracks.
 - **Type:** Zen Kaku Gothic New for numerals/headings (tabular figures so digits align), Anuphan for Thai UI text, Shippori Mincho only for the ポケット wordmark
 - **Signature details:** the goal ring is an *ensō* that intentionally never closes past 92%; saving a transaction stamps a vermilion seal (hanko-style) instead of showing a toast; the balance ticks up with an eased counter on launch
 
@@ -237,8 +251,8 @@ All aggregates are computed on read from the raw log — nothing is double-booke
 
 ## 7. Testing & Quality
 
-- **72 unit tests (Vitest)** on the pure engines: every tax bracket boundary and every allowance cap, satang-exact allocation splits, recurring schedules across short months/leap years/missed periods, backup round-trips (including importing v1 files), cascade delete/restore, allocation re-split on edit
-- **8 end-to-end tests (Playwright, mobile viewport)** covering the real flows: 3-tap logging, auto-allocation into pockets, budgets appearing in reports, tax calculation, theme persistence, history editing, delete + undo, and recurring-rule creation
+- **77 unit tests (Vitest)** on the pure engines: every tax bracket boundary and every allowance cap, satang-exact allocation splits, recurring schedules across short months/leap years/missed periods, backup round-trips (including importing v1 files and encrypt/decrypt with wrong-password rejection), cascade delete/restore, allocation re-split on edit
+- **11 end-to-end + accessibility tests (Playwright, mobile viewport)** covering the real flows — onboarding, 3-tap logging, auto-allocation into pockets, budgets in reports, tax calculation, theme persistence, history editing, delete + undo, recurring-rule creation — plus an axe WCAG audit of every screen in both themes. The suite runs against a **production preview build** (not the dev server) so there is no StrictMode double-invoke or HMR flakiness
 - TypeScript `strict` across the project; production JS bundle stays under ~100 KB gzip
 - The e2e suite has already paid for itself: it caught a race where saved tax-form values could overwrite fast user input, and a dialog-state bug where the pocket selector defaulted to an unset value
 
@@ -267,7 +281,9 @@ All code in this repository was written for this project. Dependencies and asset
 | [Vite](https://vite.dev) + [vite-plugin-pwa](https://vite-pwa-org.netlify.app) / Workbox | Build, PWA service worker | MIT |
 | [Tailwind CSS](https://tailwindcss.com) | Styling | MIT |
 | [Dexie.js](https://dexie.org) + dexie-react-hooks | IndexedDB wrapper | Apache-2.0 |
-| [Vitest](https://vitest.dev) / [Playwright](https://playwright.dev) / fake-indexeddb | Testing | MIT / Apache-2.0 |
+| [Vitest](https://vitest.dev) / [Playwright](https://playwright.dev) / [@axe-core/playwright](https://github.com/dequelabs/axe-core-npm) / fake-indexeddb | Testing & a11y audit | MIT / Apache-2.0 / MPL-2.0 |
 | [Zen Kaku Gothic New](https://fonts.google.com/specimen/Zen+Kaku+Gothic+New), [Shippori Mincho](https://fonts.google.com/specimen/Shippori+Mincho), [Anuphan](https://fonts.google.com/specimen/Anuphan) (Google Fonts) | Typography | SIL OFL 1.1 |
 
-Charts, icons (SVG), and the PWA app icon are drawn in-project — no external art assets. Tax figures follow the Thai Revenue Department's published personal-income-tax structure for tax year 2568; the app is an estimator, not filing advice.
+Charts, icons (SVG), and the PWA app icon are drawn in-project — no external art assets. Tax figures follow the [Thai Revenue Department](https://www.rd.go.th/) published personal-income-tax structure for tax year 2568 (progressive rates 0–35% and the standard allowance caps); the app is an estimator, not filing advice.
+
+This project is released under the [MIT License](LICENSE).

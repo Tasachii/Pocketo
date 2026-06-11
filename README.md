@@ -1,8 +1,15 @@
 # Pocketo（ポケット）
 
+![tests](https://img.shields.io/badge/unit_tests-77_passing-2c6e34)
+![e2e](https://img.shields.io/badge/e2e_+_a11y-11_passing-2c6e34)
+![PWA](https://img.shields.io/badge/PWA-offline-3e5c76)
+![license](https://img.shields.io/badge/license-MIT-d9402f)
+
 Minimal Japanese-inspired income & expense tracker — an installable PWA with kakeibo-style reports, money pockets with auto-allocation, and a Thai personal income tax estimator. All data stays on your device.
 
-**Live app:** https://tasachii.github.io/pocketo/ · **Project details, architecture & class diagram:** [DESCRIPTION.md](DESCRIPTION.md)
+**Live app:** https://tasachii.github.io/pocketo/
+
+**Docs:** [DESCRIPTION.md](DESCRIPTION.md) (concept, class diagram) · [PROJECT_GUIDE.md](PROJECT_GUIDE.md) (how the code works, file by file) · [PRIVACY.md](PRIVACY.md) · [CHANGELOG.md](CHANGELOG.md)
 
 | | | |
 |---|---|---|
@@ -14,11 +21,15 @@ Minimal Japanese-inspired income & expense tracker — an installable PWA with k
 
 Pocketo is a digital *kakeibo* (Japanese household account book). Log a transaction in 3 taps, split incoming money into purpose-driven pockets automatically (savings / investing / travel), keep budgets per category, set up weekly/monthly/yearly recurring items, and estimate your Thai income tax from what you actually logged — bracket by bracket, with a "buy X more SSF/RMF, save Y" simulator.
 
-It is a static web app: no server, no account, no tracking. Everything lives in your browser's IndexedDB (money stored as integer satang, balances always derived from the transaction log) and works fully offline once loaded. Deletes are undo-able, backups are portable JSON, and the monthly summary can be shared as a PNG card.
+It is a static web app: no server, no account, no tracking. Everything lives in your browser's IndexedDB (money stored as integer satang, balances always derived from the transaction log) and works fully offline once loaded. Deletes are undo-able, backups are portable JSON (optionally password-encrypted), and the monthly summary can be shared as a PNG card.
 
 - Stack: React 18 · TypeScript (strict) · Vite · Tailwind CSS · Dexie (IndexedDB) · vite-plugin-pwa
 - No chart library, no UI kit — charts are hand-rolled SVG; JS bundle ≈ 100 KB gzip
-- Tested with 72 unit tests (Vitest) on the pure engines and 8 end-to-end tests (Playwright)
+- Tested with 77 unit tests (Vitest) on the pure engines and 11 end-to-end + accessibility tests (Playwright)
+
+> **Your data lives only on this device.** There is no cloud copy. Browsers can evict local
+> storage for sites left unused for a long time — so installing the app, granting persistent
+> storage (in Settings), and exporting a JSON backup now and then is the way to keep it safe.
 
 ---
 
@@ -46,17 +57,20 @@ npm run dev        # → http://localhost:5173
 Other scripts:
 
 ```sh
-npm test           # unit tests (Vitest, 72 tests)
-npm run test:e2e   # end-to-end tests (Playwright; first time: npx playwright install chromium)
+npm test           # unit tests (Vitest, 77 tests)
+npm run test:e2e   # e2e + a11y (Playwright; first time: npx playwright install chromium)
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build (http://localhost:4173/pocketo/)
 npm run icons      # regenerate PWA icons (zero-dependency PNG writer)
+npm run og         # regenerate the Open Graph preview image
 node scripts/capture-screens.mjs   # regenerate doc screenshots (dev server on :5201 required)
 ```
 
 ---
 
 ## Tutorial / Usage
+
+**First launch.** A short welcome walks you through the idea (kakeibo, pockets, tax) and how to install the app. It only shows once.
 
 **Log an expense (3 taps).** Tap the vermilion **+** button → type the amount on the keypad → **ถัดไป** → tap a category. It saves instantly (you'll see a red seal stamp). Note, date, and pocket are optional tweaks on the same screen.
 
@@ -74,6 +88,14 @@ node scripts/capture-screens.mjs   # regenerate doc screenshots (dev server on :
 
 **Reports & sharing.** Browse months with ◀ ▶; the share icon renders the month (net, top categories, kakeibo pillars) into a PNG card you can share or download.
 
-**Backup.** Settings → export writes a JSON file; import restores it (replaces everything, with confirmation). A banner reminds you if you haven't exported for 30 days.
+**Backup.** Settings → export writes a JSON file — you can set a password to encrypt it (AES-GCM). Import restores it (replaces everything, with confirmation; asks for the password if the file is encrypted). A banner reminds you if you haven't exported for 30 days.
 
 **Theme.** The icon at the top-right of Home cycles dark → light → system. Dark is the default.
+
+---
+
+## License
+
+[MIT](LICENSE) © Phasathat Jaruchitsophon. Thai tax brackets and deduction caps follow the
+Revenue Department's published structure for tax year 2568; the tax screen is an estimate, not
+filing advice.
