@@ -74,7 +74,7 @@ Kakeibo supplies the philosophy: classify spending into Needs, Wants, Culture, a
 - Let users allocate income automatically into purpose-driven pockets and track goals
 - Give an honest, bracket-by-bracket estimate of Thai personal income tax with a savings simulator
 - Keep all financial data on-device: no server, no account, exportable at any time
-- Stay genuinely minimal: small bundle (< 100 KB gzip JS), no chart library, no UI framework beyond React + Tailwind
+- Stay genuinely minimal: small bundle (~110 KB gzip JS), no chart library, no UI framework beyond React + Tailwind
 
 ---
 
@@ -255,7 +255,7 @@ All aggregates are computed on read from the raw log — nothing is double-booke
 
 - **77 unit tests (Vitest)** on the pure engines: every tax bracket boundary and every allowance cap, satang-exact allocation splits, recurring schedules across short months/leap years/missed periods, backup round-trips (including importing v1 files and encrypt/decrypt with wrong-password rejection), cascade delete/restore, allocation re-split on edit
 - **11 end-to-end + accessibility tests (Playwright, mobile viewport)** covering the real flows — onboarding, 3-tap logging, auto-allocation into pockets, budgets in reports, tax calculation, theme persistence, history editing, delete + undo, recurring-rule creation — plus an axe WCAG audit of every screen in both themes. The suite runs against a **production preview build** (not the dev server) so there is no StrictMode double-invoke or HMR flakiness
-- TypeScript `strict` across the project; production JS bundle stays under ~100 KB gzip
+- TypeScript `strict` across the project; production JS bundle is ~110 KB gzip
 - The e2e suite has already paid for itself: it caught a race where saved tax-form values could overwrite fast user input, and a dialog-state bug where the pocket selector defaulted to an unset value
 
 ---

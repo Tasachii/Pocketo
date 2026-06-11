@@ -336,7 +336,7 @@ function RecurringDialog({
               className="pressable rounded-2xl px-4 py-3 text-sm"
               style={{ color: "var(--expense)" }}
             >
-              ลบ
+              {t("delete")}
             </button>
           )}
           <button
@@ -344,7 +344,7 @@ function RecurringDialog({
             className="pressable flex-1 rounded-2xl py-3 font-semibold text-white"
             style={{ background: "var(--accent)" }}
           >
-            บันทึก
+            {t("save")}
           </button>
         </div>
       </div>

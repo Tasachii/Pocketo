@@ -72,9 +72,3 @@ export interface Recurring {
   createdAt: number;
 }
 
-export const KAKEIBO_LABEL: Record<KakeiboGroup, string> = {
-  needs: "จำเป็น",
-  wants: "อยากได้",
-  culture: "ปัญญาและใจ",
-  extra: "ไม่คาดคิด",
-};

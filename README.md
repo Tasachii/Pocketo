@@ -1,7 +1,7 @@
 # Pocketo（ポケット）
 
 ![tests](https://img.shields.io/badge/unit_tests-77_passing-2c6e34)
-![e2e](https://img.shields.io/badge/e2e_+_a11y-11_passing-2c6e34)
+![e2e](https://img.shields.io/badge/e2e_+_a11y-12_passing-2c6e34)
 ![PWA](https://img.shields.io/badge/PWA-offline-3e5c76)
 ![license](https://img.shields.io/badge/license-MIT-d9402f)
 
@@ -24,7 +24,7 @@ Pocketo is a digital *kakeibo* (Japanese household account book). Log a transact
 It is a static web app: no server, no account, no tracking. Everything lives in your browser's IndexedDB (money stored as integer satang, balances always derived from the transaction log) and works fully offline once loaded. Deletes are undo-able, backups are portable JSON (optionally password-encrypted), and the monthly summary can be shared as a PNG card.
 
 - Stack: React 18 · TypeScript (strict) · Vite · Tailwind CSS · Dexie (IndexedDB) · vite-plugin-pwa
-- No chart library, no UI kit — charts are hand-rolled SVG; JS bundle ≈ 100 KB gzip
+- No chart library, no UI kit — charts are hand-rolled SVG; JS bundle ~110 KB gzip
 - Fully bilingual (Thai / English), dark-first, installable and offline
 - Tested with 77 unit tests (Vitest) on the pure engines and 12 end-to-end + accessibility tests (Playwright)
 
