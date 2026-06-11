@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { Feedback } from "./components/Feedback";
 import { IconPlus } from "./components/Icons";
+import { Onboarding, ONBOARDED_KEY } from "./components/Onboarding";
 import { QuickAdd } from "./components/QuickAdd";
 import { Stamp } from "./components/Stamp";
 import { TabBar, type TabId } from "./components/TabBar";
@@ -28,6 +29,11 @@ export default function App() {
   const pockets =
     useLiveQuery(() => db.pockets.orderBy("sortOrder").toArray(), []) ?? [];
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
+
+  // อ่าน localStorage แบบ sync ตั้งแต่ render แรก — ไม่มี race กับ IndexedDB
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => !localStorage.getItem(ONBOARDED_KEY),
+  );
 
   const onSaved = () => {
     setStamp(true);
@@ -74,6 +80,7 @@ export default function App() {
       />
       <Stamp visible={stamp} />
       <Feedback />
+      {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
     </div>
   );
 }
