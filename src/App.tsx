@@ -4,6 +4,7 @@ import { IconPlus } from "./components/Icons";
 import { QuickAdd } from "./components/QuickAdd";
 import { Stamp } from "./components/Stamp";
 import { TabBar, type TabId } from "./components/TabBar";
+import { applyDueRecurring } from "./db/data";
 import { db, seedIfEmpty } from "./db/db";
 import { Home } from "./screens/Home";
 import { Pockets } from "./screens/Pockets";
@@ -19,7 +20,8 @@ export default function App() {
   const [stamp, setStamp] = useState(false);
 
   useEffect(() => {
-    void seedIfEmpty();
+    // สร้างรายการประจำที่ครบกำหนดทันทีที่เปิดแอพ (ตามเก็บเดือนที่พลาดด้วย)
+    void seedIfEmpty().then(() => applyDueRecurring());
   }, []);
 
   const pockets =

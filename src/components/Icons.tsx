@@ -113,6 +113,23 @@ export const IconClose = (p: IconProps) => (
   </Svg>
 );
 
+export const IconShare = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3v12" />
+    <path d="m8 7 4-4 4 4" />
+    <path d="M5 12v8h14v-8" />
+  </Svg>
+);
+
+export const IconRepeat = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M17 2.5 21 6.5l-4 4" />
+    <path d="M21 6.5H8a5 5 0 0 0-5 5" />
+    <path d="m7 21.5-4-4 4-4" />
+    <path d="M3 17.5h13a5 5 0 0 0 5-5" />
+  </Svg>
+);
+
 export const IconDelete = (p: IconProps) => (
   <Svg {...p}>
     <path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13" />

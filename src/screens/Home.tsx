@@ -1,11 +1,19 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo } from "react";
 import { EnsoRing } from "../components/EnsoRing";
-import { IconAuto, IconDelete, IconMoon, IconSun, IconSwap } from "../components/Icons";
+import {
+  IconAuto,
+  IconDelete,
+  IconMoon,
+  IconRepeat,
+  IconSun,
+  IconSwap,
+} from "../components/Icons";
 import { NumberTicker } from "../components/NumberTicker";
 import { fmt, fmtBaht } from "../core/money";
+import { nextOccurrence } from "../core/recurring";
 import type { Tx } from "../core/types";
-import { calcBalances, fmtThaiDate, monthKey } from "../db/data";
+import { calcBalances, fmtThaiDate, monthKey, todayStr } from "../db/data";
 import { db } from "../db/db";
 import type { ThemeMode } from "../state/useTheme";
 
@@ -48,6 +56,19 @@ export function Home({
     }
     return { income, expense };
   }, [txs, mk]);
+
+  const rules =
+    useLiveQuery(() => db.recurring.where("active").equals(1).toArray(), []) ??
+    [];
+  const today = todayStr();
+  const upcoming = useMemo(
+    () =>
+      rules
+        .map((r) => ({ r, next: nextOccurrence(r, today) }))
+        .sort((a, b) => a.next.localeCompare(b.next))
+        .slice(0, 3),
+    [rules, today],
+  );
 
   const recent = useMemo(
     () =>
@@ -147,8 +168,39 @@ export function Home({
         </section>
       )}
 
+      {/* รายการประจำที่จะถึง */}
+      {upcoming.length > 0 && (
+        <section className="rise rise-3 pb-7">
+          <h2 className="pb-2 text-sm font-medium text-sub">ประจำที่จะถึง</h2>
+          <ul className="space-y-1">
+            {upcoming.map(({ r, next }) => {
+              const cat =
+                r.categoryId != null ? catById.get(r.categoryId) : undefined;
+              return (
+                <li key={r.id} className="flex items-center gap-3 px-2 py-1.5">
+                  <IconRepeat size={14} className="shrink-0 text-faint" />
+                  <span className="min-w-0 flex-1 truncate text-sm text-sub">
+                    {r.note || cat?.name || "รายการประจำ"}
+                  </span>
+                  <span className="text-xs text-faint">{fmtThaiDate(next)}</span>
+                  <span
+                    className="tabular text-sm"
+                    style={{
+                      color:
+                        r.type === "IN" ? "var(--income)" : "var(--expense)",
+                    }}
+                  >
+                    {r.type === "IN" ? "+" : "−"}฿{fmt(r.amount)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* รายการล่าสุด */}
-      <section className="rise rise-3">
+      <section className="rise rise-4">
         {recent.length === 0 ? (
           <div className="flex flex-col items-center gap-3 pb-10 pt-16 text-center">
             <EnsoRing progress={0.92} size={64} stroke={3} color="var(--line)" />

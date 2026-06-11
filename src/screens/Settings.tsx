@@ -1,8 +1,10 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { IconDelete } from "../components/Icons";
+import { Field, inputCls, Overlay } from "../components/Modal";
+import { RecurringManager } from "../components/RecurringManager";
 import { exportData, importData } from "../core/backup";
-import type { KakeiboGroup } from "../core/types";
+import { fmt, fmtBaht, parseAmount } from "../core/money";
+import type { Category, KakeiboGroup } from "../core/types";
 import { KAKEIBO_LABEL } from "../core/types";
 import { db } from "../db/db";
 import type { ThemeMode } from "../state/useTheme";
@@ -22,6 +24,7 @@ export function Settings({
     usage?: number;
   } | null>(null);
   const [msg, setMsg] = useState("");
+  const [catEditing, setCatEditing] = useState<Category | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -158,7 +161,17 @@ export function Settings({
         </div>
       </Section>
 
+      <Section title="รายการประจำ" className="rise rise-3">
+        <p className="pb-3 text-xs text-faint">
+          เงินเดือน ค่าเช่า subscription — สร้างให้อัตโนมัติทุกเดือนตามวันที่กำหนด
+        </p>
+        <RecurringManager />
+      </Section>
+
       <Section title="หมวดหมู่" className="rise rise-3">
+        <p className="pb-3 text-xs text-faint">
+          แตะหมวดเพื่อแก้ไขหรือตั้งงบประมาณต่อเดือน
+        </p>
         <CategoryManager />
         <ul className="space-y-1 pt-3">
           {categories
@@ -170,31 +183,34 @@ export function Settings({
                   : 1,
             )
             .map((c) => (
-              <li key={c.id} className="flex items-center gap-3 px-1 py-1.5 text-sm">
-                <span>{c.icon}</span>
-                <span className="flex-1">{c.name}</span>
-                <span className="text-xs text-faint">
-                  {c.type === "income"
-                    ? "รายรับ"
-                    : KAKEIBO_LABEL[c.group ?? "extra"]}
-                </span>
+              <li key={c.id}>
                 <button
-                  onClick={async () => {
-                    if (txs.some((t) => t.categoryId === c.id)) {
-                      setMsg(`"${c.name}" มีรายการใช้อยู่ ลบไม่ได้`);
-                      return;
-                    }
-                    if (window.confirm(`ลบหมวด "${c.name}"?`))
-                      await db.categories.delete(c.id!);
-                  }}
-                  className="pressable p-1 text-faint"
-                  aria-label={`ลบหมวด ${c.name}`}
+                  onClick={() => setCatEditing(c)}
+                  className="pressable flex w-full items-center gap-3 px-1 py-1.5 text-left text-sm"
                 >
-                  <IconDelete size={15} />
+                  <span>{c.icon}</span>
+                  <span className="flex-1">{c.name}</span>
+                  {(c.budget ?? 0) > 0 && (
+                    <span className="tabular text-xs text-sub">
+                      งบ {fmtBaht(c.budget!)}
+                    </span>
+                  )}
+                  <span className="text-xs text-faint">
+                    {c.type === "income"
+                      ? "รายรับ"
+                      : KAKEIBO_LABEL[c.group ?? "extra"]}
+                  </span>
                 </button>
               </li>
             ))}
         </ul>
+        {catEditing && (
+          <CategoryDialog
+            category={catEditing}
+            inUse={txs.some((t) => t.categoryId === catEditing.id)}
+            onClose={() => setCatEditing(null)}
+          />
+        )}
       </Section>
 
       <Section title="เกี่ยวกับ" className="rise rise-4">
@@ -230,6 +246,117 @@ function Section({
       <h2 className="pb-3 text-sm font-medium text-sub">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function CategoryDialog({
+  category,
+  inUse,
+  onClose,
+}: {
+  category: Category;
+  inUse: boolean;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(category.name);
+  const [icon, setIcon] = useState(category.icon);
+  const [group, setGroup] = useState<KakeiboGroup>(category.group ?? "wants");
+  const [budgetStr, setBudgetStr] = useState(
+    category.budget ? fmt(category.budget) : "",
+  );
+  const [error, setError] = useState("");
+
+  const save = async () => {
+    if (!name.trim()) return setError("ตั้งชื่อหมวดก่อน");
+    const budget = budgetStr ? parseAmount(budgetStr) : null;
+    if (budgetStr && budget === null) return setError("งบประมาณต้องเป็นตัวเลข");
+    await db.categories.update(category.id!, {
+      name: name.trim(),
+      icon: icon.trim() || "🏷️",
+      group: category.type === "expense" ? group : undefined,
+      budget: budget && budget > 0 ? budget : undefined,
+    });
+    onClose();
+  };
+
+  const remove = async () => {
+    if (inUse) {
+      setError("หมวดนี้มีรายการใช้อยู่ ลบไม่ได้");
+      return;
+    }
+    if (window.confirm(`ลบหมวด "${category.name}"?`)) {
+      await db.categories.delete(category.id!);
+      onClose();
+    }
+  };
+
+  return (
+    <Overlay onClose={onClose}>
+      <h2 className="pb-4 font-zen text-lg font-bold">แก้ไขหมวด</h2>
+      <div className="space-y-4">
+        <div className="flex gap-2">
+          <input
+            className={`${inputCls} w-16 text-center`}
+            value={icon}
+            onChange={(e) => setIcon(e.target.value)}
+            aria-label="ไอคอน"
+          />
+          <input
+            className={inputCls}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="ชื่อหมวด"
+          />
+        </div>
+        {category.type === "expense" && (
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="เสา kakeibo">
+              <select
+                className={inputCls}
+                value={group}
+                onChange={(e) => setGroup(e.target.value as KakeiboGroup)}
+              >
+                {(Object.keys(KAKEIBO_LABEL) as KakeiboGroup[]).map((g) => (
+                  <option key={g} value={g}>
+                    {KAKEIBO_LABEL[g]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="งบต่อเดือน (บาท)">
+              <input
+                className={inputCls}
+                inputMode="decimal"
+                value={budgetStr}
+                onChange={(e) => setBudgetStr(e.target.value)}
+                placeholder="ไม่จำกัด"
+              />
+            </Field>
+          </div>
+        )}
+        {error && (
+          <p className="text-sm" style={{ color: "var(--expense)" }}>
+            {error}
+          </p>
+        )}
+        <div className="flex gap-3 pt-1">
+          <button
+            onClick={remove}
+            className="pressable rounded-2xl px-4 py-3 text-sm"
+            style={{ color: "var(--expense)" }}
+          >
+            ลบ
+          </button>
+          <button
+            onClick={save}
+            className="pressable flex-1 rounded-2xl py-3 font-semibold text-white"
+            style={{ background: "var(--accent)" }}
+          >
+            บันทึก
+          </button>
+        </div>
+      </div>
+    </Overlay>
   );
 }
 

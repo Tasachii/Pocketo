@@ -1,8 +1,9 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { CHART_COLORS, Donut, type DonutSlice } from "../components/Donut";
-import { IconBack } from "../components/Icons";
+import { IconBack, IconShare } from "../components/Icons";
 import { fmt, fmtBaht } from "../core/money";
+import { renderShareCard } from "../core/share";
 import { KAKEIBO_LABEL, type KakeiboGroup } from "../core/types";
 import { monthKey, THAI_MONTHS, THAI_MONTHS_SHORT } from "../db/data";
 import { db } from "../db/db";
@@ -47,14 +48,19 @@ export function Reports() {
     return { income, expense };
   }, [monthTxs]);
 
-  // รายจ่ายแยกหมวด → donut (top 5 + อื่นๆ)
-  const { slices, legend } = useMemo(() => {
-    const byCat = new Map<number, number>();
+  // ยอดใช้จ่ายต่อหมวดของเดือนนี้ — ใช้ทั้ง donut, งบประมาณ และภาพแชร์
+  const spentByCat = useMemo(() => {
+    const m = new Map<number, number>();
     for (const t of monthTxs) {
       if (t.type !== "OUT" || t.categoryId == null) continue;
-      byCat.set(t.categoryId, (byCat.get(t.categoryId) ?? 0) + t.amount);
+      m.set(t.categoryId, (m.get(t.categoryId) ?? 0) + t.amount);
     }
-    const sorted = [...byCat.entries()].sort((a, b) => b[1] - a[1]);
+    return m;
+  }, [monthTxs]);
+
+  // donut (top 5 + ที่เหลือ)
+  const { slices, legend } = useMemo(() => {
+    const sorted = [...spentByCat.entries()].sort((a, b) => b[1] - a[1]);
     const top = sorted.slice(0, 5);
     const rest = sorted.slice(5).reduce((s, [, v]) => s + v, 0);
     const slices: DonutSlice[] = top.map(([id, v], i) => ({
@@ -65,7 +71,16 @@ export function Reports() {
     if (rest > 0)
       slices.push({ label: "ที่เหลือ", value: rest, color: "var(--faint)" });
     return { slices, legend: slices };
-  }, [monthTxs, catById]);
+  }, [spentByCat, catById]);
+
+  // หมวดที่ตั้งงบประมาณไว้
+  const budgetCats = useMemo(
+    () =>
+      categories
+        .filter((c) => c.type === "expense" && (c.budget ?? 0) > 0)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [categories],
+  );
 
   // 4 เสา kakeibo
   const groups = useMemo(() => {
@@ -108,11 +123,60 @@ export function Reports() {
 
   const hasData = monthTxs.some((t) => t.type === "IN" || t.type === "OUT");
 
+  const [sharing, setSharing] = useState(false);
+  const share = async () => {
+    if (sharing || !hasData) return;
+    setSharing(true);
+    try {
+      const topCats = [...spentByCat.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([id, amount]) => ({
+          icon: catById.get(id)?.icon ?? "",
+          name: catById.get(id)?.name ?? "?",
+          amount,
+        }));
+      const blob = await renderShareCard({
+        monthLabel: `${THAI_MONTHS[ym.m]} ${ym.y + 543}`,
+        income,
+        expense,
+        topCats,
+        groups,
+      });
+      const file = new File([blob], `pocketo-${mk}.png`, {
+        type: "image/png",
+      });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+    } catch {
+      // ผู้ใช้ยกเลิกการแชร์ — ไม่ต้องทำอะไร
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
     <div>
       <header className="rise flex items-center justify-between pt-2">
         <h1 className="font-zen text-xl font-bold tracking-tight">รายงาน</h1>
         <div className="flex items-center gap-1">
+          {hasData && (
+            <button
+              onClick={share}
+              className="pressable p-2 text-sub"
+              style={{ opacity: sharing ? 0.4 : 1 }}
+              aria-label="แชร์สรุปเดือนเป็นภาพ"
+            >
+              <IconShare size={18} />
+            </button>
+          )}
           <button onClick={() => shift(-1)} className="pressable p-2 text-sub" aria-label="เดือนก่อน">
             <IconBack size={18} />
           </button>
@@ -147,6 +211,46 @@ export function Reports() {
           </div>
         ))}
       </section>
+
+      {/* งบประมาณต่อหมวด — เขียว→เหลือง→แดงตามการใช้ */}
+      {budgetCats.length > 0 && (
+        <section className="rise rise-2 pt-8">
+          <h2 className="pb-4 text-sm font-medium text-sub">งบประมาณเดือนนี้</h2>
+          <div className="space-y-3">
+            {budgetCats.map((c) => {
+              const spent = spentByCat.get(c.id!) ?? 0;
+              const ratio = spent / c.budget!;
+              const color =
+                ratio >= 1
+                  ? "var(--expense)"
+                  : ratio >= 0.8
+                    ? "#b9842f"
+                    : "var(--income)";
+              return (
+                <div key={c.id}>
+                  <div className="flex justify-between pb-1 text-sm">
+                    <span>
+                      {c.icon} {c.name}
+                    </span>
+                    <span className="tabular text-sub">
+                      {fmtBaht(spent)} / {fmtBaht(c.budget!)}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-surface2">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-700"
+                      style={{
+                        width: `${Math.min(100, ratio * 100)}%`,
+                        background: color,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {!hasData ? (
         <p className="rise rise-2 pt-16 text-center text-sm text-sub">

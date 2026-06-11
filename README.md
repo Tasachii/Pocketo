@@ -8,6 +8,9 @@ Log a transaction in 3 taps, split income into pockets automatically, and estima
 - **Quick logging** — amount → category → done. One entry takes 3 taps.
 - **Pockets** — divide money into savings / investing / spending boxes with auto-allocation rules (e.g. 20% of every income goes to savings) and goal tracking rendered as an ink-circle progress ring.
 - **Kakeibo reports** — expenses grouped under the four classic kakeibo pillars (Needs / Wants / Culture / Unexpected), category donut chart, and a 6-month trend.
+- **Recurring transactions** — salary, rent, subscriptions posted automatically on a chosen day of month; months you missed while the app was closed are caught up on next launch, and upcoming items show on the dashboard.
+- **Monthly budgets** — set a budget per category; progress bars shift green → amber → red as you approach the limit.
+- **Shareable summary card** — render the month (net, top categories, kakeibo pillars) to a 1080×1350 PNG via the canvas API and share or download it.
 - **Thai tax estimator** — progressive brackets (0–35%), standard 50% expense deduction, allowance caps (SSF / RMF / Thai ESG / PVD / insurance / social security / home-loan interest / donations), withholding-tax refund calculation, and a "buy X more, save Y" simulator. Pre-fills your yearly income from logged records.
 - **Local-first** — everything lives in IndexedDB on your device. No server, no account, no tracking. JSON export/import for backup and migration.
 - **Dark / light / system theme** — dark by default, both themes meet WCAG AA contrast.

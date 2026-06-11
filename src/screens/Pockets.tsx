@@ -1,7 +1,8 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { EnsoRing } from "../components/EnsoRing";
 import { IconPlus, IconSwap } from "../components/Icons";
+import { Field, inputCls, Overlay } from "../components/Modal";
 import { fmt, fmtBaht, parseAmount } from "../core/money";
 import type { Pocket } from "../core/types";
 import { calcBalances, todayStr, transfer } from "../db/data";
@@ -125,35 +126,6 @@ export function Pockets() {
     </div>
   );
 }
-
-function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  return (
-    <div
-      className="fade fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
-      onClick={onClose}
-    >
-      <div
-        className="sheet w-full max-w-md rounded-t-3xl bg-bg p-5 sm:rounded-3xl"
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 20px)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="block">
-      <span className="text-xs text-sub">{label}</span>
-      <div className="pt-1">{children}</div>
-    </label>
-  );
-}
-
-const inputCls =
-  "w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px]";
 
 function PocketDialog({
   pocket,
