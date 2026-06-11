@@ -3,13 +3,17 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "e2e",
   timeout: 30_000,
-  // ใช้พอร์ตเฉพาะของ pocketo และสั่งเปิด server เองเสมอ
-  // (กันชนกับ dev server ของโปรเจกต์อื่นที่อาจรันค้างบนพอร์ตยอดนิยม)
-  use: { baseURL: "http://localhost:5199" },
+  // รันบน production build + preview (ไม่ใช่ dev server) เพื่อความ deterministic:
+  // ไม่มี on-the-fly transform / HMR และ React ไม่ double-invoke แบบ StrictMode dev
+  // base ของ production คือ /pocketo/
+  // block service worker ตอน e2e — PWA SW ไม่ใช่สิ่งที่เทสต์นี้ตรวจ และมัน
+  // แทรกตอน reload ทำให้ assertion เรื่อง persistence flaky
+  use: { baseURL: "http://localhost:5199/pocketo/", serviceWorkers: "block" },
   webServer: {
-    command: "npm run dev -- --port 5199 --strictPort",
-    port: 5199,
+    command: "npm run build && npm run preview -- --port 5199 --strictPort",
+    url: "http://localhost:5199/pocketo/",
     reuseExistingServer: false,
+    timeout: 120_000,
   },
   projects: [
     {
