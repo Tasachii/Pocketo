@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
+import { Feedback } from "./components/Feedback";
 import { IconPlus } from "./components/Icons";
 import { QuickAdd } from "./components/QuickAdd";
 import { Stamp } from "./components/Stamp";
@@ -72,6 +73,7 @@ export default function App() {
         onSaved={onSaved}
       />
       <Stamp visible={stamp} />
+      <Feedback />
     </div>
   );
 }

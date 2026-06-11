@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { EnsoRing } from "../components/EnsoRing";
 import { IconPlus, IconSwap } from "../components/Icons";
+import { confirmDialog } from "../components/Feedback";
 import { Field, inputCls, Overlay } from "../components/Modal";
 import { fmt, fmtBaht, parseAmount } from "../core/money";
 import type { Pocket } from "../core/types";
@@ -202,7 +203,12 @@ function PocketDialog({
       setError("กล่องนี้มีรายการอยู่ ลบไม่ได้ — โอนเงินออกและลบรายการก่อน");
       return;
     }
-    if (window.confirm(`ลบกล่อง "${pocket.name}"?`)) {
+    if (
+      await confirmDialog(`ลบกล่อง "${pocket.name}"?`, {
+        confirmLabel: "ลบ",
+        danger: true,
+      })
+    ) {
       await db.pockets.delete(pocket.id!);
       onClose();
     }

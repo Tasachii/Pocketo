@@ -2,10 +2,25 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { fmt, parseAmount } from "../core/money";
 import { nextOccurrence } from "../core/recurring";
-import type { Recurring } from "../core/types";
-import { applyDueRecurring, fmtThaiDate, todayStr } from "../db/data";
+import type { Recurring, RecurringFreq } from "../core/types";
+import {
+  applyDueRecurring,
+  fmtThaiDate,
+  THAI_MONTHS_SHORT,
+  THAI_WEEKDAYS,
+  todayStr,
+} from "../db/data";
 import { db } from "../db/db";
+import { confirmDialog } from "./Feedback";
 import { Field, inputCls, Overlay } from "./Modal";
+
+function freqLabel(r: Recurring): string {
+  const freq = r.freq ?? "monthly";
+  if (freq === "weekly") return `ทุกวัน${THAI_WEEKDAYS[r.day]}`;
+  if (freq === "yearly")
+    return `ทุกปี ${r.day} ${THAI_MONTHS_SHORT[(r.month ?? 1) - 1]}`;
+  return `ทุกวันที่ ${r.day}`;
+}
 
 /** จัดการรายการประจำรายเดือน (เงินเดือน ค่าเช่า subscription ฯลฯ) */
 export function RecurringManager() {
@@ -46,7 +61,7 @@ export function RecurringManager() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm">{name}</span>
                   <span className="block text-xs text-faint">
-                    ทุกวันที่ {r.day} · ถัดไป {fmtThaiDate(nextOccurrence(r, today))}
+                    {freqLabel(r)} · ถัดไป {fmtThaiDate(nextOccurrence(r, today))}
                   </span>
                 </span>
                 <span
@@ -110,9 +125,16 @@ function RecurringDialog({
   const [amountStr, setAmountStr] = useState(rule ? fmt(rule.amount) : "");
   const [categoryId, setCategoryId] = useState(rule?.categoryId);
   const [pocketId, setPocketId] = useState(rule?.pocketId ?? main?.id);
+  const [freq, setFreq] = useState<RecurringFreq>(rule?.freq ?? "monthly");
   const [day, setDay] = useState(rule?.day ?? 1);
+  const [month, setMonth] = useState(rule?.month ?? 1);
   const [note, setNote] = useState(rule?.note ?? "");
   const [error, setError] = useState("");
+
+  const changeFreq = (f: RecurringFreq) => {
+    setFreq(f);
+    setDay(1); // ความหมายของ day เปลี่ยนตามความถี่ — รีเซ็ตกันค่าค้าง
+  };
 
   const cats = categories
     .filter((c) => c.type === (type === "IN" ? "income" : "expense"))
@@ -132,7 +154,9 @@ function RecurringDialog({
       pocketId,
       categoryId: effectiveCatId,
       note: note.trim() || undefined,
+      freq,
       day,
+      month: freq === "yearly" ? month : undefined,
     };
     if (rule) {
       await db.recurring.update(rule.id!, fields);
@@ -151,7 +175,13 @@ function RecurringDialog({
 
   const remove = async () => {
     if (!rule) return;
-    if (window.confirm("ลบรายการประจำนี้? (รายการที่สร้างไปแล้วยังอยู่)")) {
+    if (
+      await confirmDialog("ลบรายการประจำนี้?", {
+        detail: "รายการที่สร้างไปแล้วยังอยู่ครบ",
+        confirmLabel: "ลบ",
+        danger: true,
+      })
+    ) {
       await db.recurring.delete(rule.id!);
       onClose();
     }
@@ -194,19 +224,63 @@ function RecurringDialog({
               autoFocus={!rule}
             />
           </Field>
-          <Field label="ทุกวันที่">
+          <Field label="ความถี่">
             <select
               className={inputCls}
-              value={day}
-              onChange={(e) => setDay(Number(e.target.value))}
+              value={freq}
+              onChange={(e) => changeFreq(e.target.value as RecurringFreq)}
             >
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                <option key={d} value={d}>
-                  วันที่ {d}
-                </option>
-              ))}
+              <option value="monthly">รายเดือน</option>
+              <option value="weekly">รายสัปดาห์</option>
+              <option value="yearly">รายปี</option>
             </select>
           </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {freq === "weekly" ? (
+            <Field label="ทุกวัน">
+              <select
+                className={inputCls}
+                value={day}
+                onChange={(e) => setDay(Number(e.target.value))}
+              >
+                {THAI_WEEKDAYS.map((w, i) => (
+                  <option key={i} value={i}>
+                    วัน{w}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : (
+            <Field label="ทุกวันที่">
+              <select
+                className={inputCls}
+                value={day}
+                onChange={(e) => setDay(Number(e.target.value))}
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>
+                    วันที่ {d}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          {freq === "yearly" && (
+            <Field label="เดือน">
+              <select
+                className={inputCls}
+                value={month}
+                onChange={(e) => setMonth(Number(e.target.value))}
+              >
+                {THAI_MONTHS_SHORT.map((m, i) => (
+                  <option key={i} value={i + 1}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="หมวด">

@@ -53,11 +53,21 @@ export function Tax() {
 
   // โหลด/บันทึกฟอร์มของแต่ละปีไว้ใน kv
   useEffect(() => {
+    // ถ้าผู้ใช้พิมพ์ก่อนที่ค่าที่เก็บไว้จะโหลดเสร็จ (เปิดหน้าแล้วพิมพ์ทันที)
+    // ต้องไม่เอาค่าเก่ามาทับ — merge สิ่งที่พิมพ์ไว้ทับค่าที่เก็บ
+    // แต่ตอนสลับปี (เคยโหลดปีอื่นเสร็จแล้ว) ให้แทนที่ทั้งฟอร์ม
+    const switchingYear = loaded.current;
     loaded.current = false;
+    let cancelled = false;
     db.kv.get(`tax-${year}`).then((row) => {
-      setForm((row?.value as Record<string, string>) ?? {});
+      if (cancelled) return;
+      const stored = (row?.value as Record<string, string>) ?? {};
+      setForm((prev) => (switchingYear ? stored : { ...stored, ...prev }));
       loaded.current = true;
     });
+    return () => {
+      cancelled = true;
+    };
   }, [year]);
   useEffect(() => {
     if (loaded.current) void db.kv.put({ key: `tax-${year}`, value: form });

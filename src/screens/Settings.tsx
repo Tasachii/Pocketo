@@ -1,8 +1,9 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { confirmDialog, showToast } from "../components/Feedback";
 import { Field, inputCls, Overlay } from "../components/Modal";
 import { RecurringManager } from "../components/RecurringManager";
-import { exportData, importData } from "../core/backup";
+import { downloadBackup, importData } from "../core/backup";
 import { fmt, fmtBaht, parseAmount } from "../core/money";
 import type { Category, KakeiboGroup } from "../core/types";
 import { KAKEIBO_LABEL } from "../core/types";
@@ -36,28 +37,22 @@ export function Settings({
   }, []);
 
   const doExport = async () => {
-    const data = await exportData(db);
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `pocketo-backup-${new Date().toLocaleDateString("en-CA")}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    await downloadBackup(db);
+    showToast("ส่งออกไฟล์ backup แล้ว");
   };
 
   const doImport = async (file: File) => {
     try {
       const data = JSON.parse(await file.text());
-      if (
-        !window.confirm(
-          "นำเข้าจะแทนที่ข้อมูลทั้งหมดที่มีอยู่ตอนนี้ ดำเนินการต่อ?",
-        )
-      )
-        return;
+      const ok = await confirmDialog("นำเข้าข้อมูลจากไฟล์?", {
+        detail: "ข้อมูลทั้งหมดที่มีอยู่ตอนนี้จะถูกแทนที่ด้วยข้อมูลในไฟล์",
+        confirmLabel: "นำเข้า",
+        danger: true,
+      });
+      if (!ok) return;
       await importData(db, data);
-      setMsg("นำเข้าข้อมูลเรียบร้อย");
+      await db.kv.put({ key: "lastExport", value: Date.now() });
+      showToast("นำเข้าข้อมูลเรียบร้อย");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "นำเข้าไม่สำเร็จ");
     }
@@ -74,8 +69,22 @@ export function Settings({
   };
 
   const clearAll = async () => {
-    if (!window.confirm("ลบข้อมูลทั้งหมดถาวร?")) return;
-    if (!window.confirm("ยืนยันอีกครั้ง — กู้คืนไม่ได้ถ้าไม่มีไฟล์ backup")) return;
+    if (
+      !(await confirmDialog("ลบข้อมูลทั้งหมดถาวร?", {
+        detail: "ทุกรายการ กล่อง หมวด และรายการประจำจะหายไป",
+        confirmLabel: "ลบทั้งหมด",
+        danger: true,
+      }))
+    )
+      return;
+    if (
+      !(await confirmDialog("ยืนยันอีกครั้ง", {
+        detail: "กู้คืนไม่ได้ถ้าไม่มีไฟล์ backup",
+        confirmLabel: "ยืนยันลบ",
+        danger: true,
+      }))
+    )
+      return;
     await db.delete();
     location.reload();
   };
@@ -284,7 +293,12 @@ function CategoryDialog({
       setError("หมวดนี้มีรายการใช้อยู่ ลบไม่ได้");
       return;
     }
-    if (window.confirm(`ลบหมวด "${category.name}"?`)) {
+    if (
+      await confirmDialog(`ลบหมวด "${category.name}"?`, {
+        confirmLabel: "ลบ",
+        danger: true,
+      })
+    ) {
       await db.categories.delete(category.id!);
       onClose();
     }

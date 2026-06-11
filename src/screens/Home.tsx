@@ -1,21 +1,27 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { EnsoRing } from "../components/EnsoRing";
+import { showToast } from "../components/Feedback";
 import {
   IconAuto,
-  IconDelete,
   IconMoon,
   IconRepeat,
   IconSun,
   IconSwap,
 } from "../components/Icons";
 import { NumberTicker } from "../components/NumberTicker";
+import { TxEditor } from "../components/TxEditor";
+import { downloadBackup } from "../core/backup";
 import { fmt, fmtBaht } from "../core/money";
 import { nextOccurrence } from "../core/recurring";
 import type { Tx } from "../core/types";
 import { calcBalances, fmtThaiDate, monthKey, todayStr } from "../db/data";
 import { db } from "../db/db";
 import type { ThemeMode } from "../state/useTheme";
+import { History } from "./History";
+
+const BACKUP_NUDGE_AFTER = 30 * 24 * 60 * 60 * 1000; // 30 วัน
+const SNOOZE = 7 * 24 * 60 * 60 * 1000;
 
 export function Home({
   themeMode,
@@ -81,6 +87,18 @@ export function Home({
     [txs],
   );
 
+  const [editingTx, setEditingTx] = useState<Tx | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // เตือนสำรองข้อมูลเมื่อมีรายการพอสมควรและไม่ได้ export นานเกิน 30 วัน
+  const lastExport = useLiveQuery(() => db.kv.get("lastExport"), []);
+  const snooze = useLiveQuery(() => db.kv.get("backupSnooze"), []);
+  const nowMs = Date.now();
+  const showBackupNudge =
+    txs.length >= 10 &&
+    nowMs - ((lastExport?.value as number) ?? 0) > BACKUP_NUDGE_AFTER &&
+    nowMs > ((snooze?.value as number) ?? 0);
+
   const ThemeIcon =
     themeMode === "dark" ? IconMoon : themeMode === "light" ? IconSun : IconAuto;
 
@@ -92,10 +110,6 @@ export function Home({
     if (t.type === "INIT") return { icon: "", name: "ยอดตั้งต้น" };
     const c = t.categoryId != null ? catById.get(t.categoryId) : undefined;
     return { icon: c?.icon ?? "", name: c?.name ?? "ไม่ระบุหมวด" };
-  };
-
-  const remove = async (t: Tx) => {
-    if (window.confirm("ลบรายการนี้?")) await db.tx.delete(t.id!);
   };
 
   return (
@@ -212,49 +226,55 @@ export function Home({
           </div>
         ) : (
           <>
-            <h2 className="pb-3 text-sm font-medium text-sub">ล่าสุด</h2>
+            <div className="flex items-baseline justify-between pb-3">
+              <h2 className="text-sm font-medium text-sub">ล่าสุด</h2>
+              <button
+                onClick={() => setHistoryOpen(true)}
+                className="pressable text-xs"
+                style={{ color: "var(--accent)" }}
+              >
+                ทั้งหมด →
+              </button>
+            </div>
             <ul className="space-y-1">
               {recent.map((t) => {
                 const { icon, name } = txLabel(t);
                 const isIn = t.type === "IN" || t.type === "INIT";
                 const isTransfer = t.type === "TRANSFER";
                 return (
-                  <li
-                    key={t.id}
-                    className="group flex items-center gap-3 rounded-2xl px-2 py-2.5"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface2 text-lg">
-                      {isTransfer ? (
-                        <IconSwap size={16} className="text-sub" />
-                      ) : (
-                        icon || "•"
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[15px]">{name}</p>
-                      <p className="text-xs text-faint">
-                        {fmtThaiDate(t.date)}
-                        {t.note ? ` · ${t.note}` : ""}
-                      </p>
-                    </div>
-                    <span
-                      className="tabular font-zen text-[15px] font-medium"
-                      style={{
-                        color: isTransfer
-                          ? "var(--neutral)"
-                          : isIn
-                            ? "var(--income)"
-                            : "var(--expense)",
-                      }}
-                    >
-                      {isTransfer ? "" : isIn ? "+" : "−"}฿{fmt(t.amount)}
-                    </span>
+                  <li key={t.id}>
                     <button
-                      onClick={() => remove(t)}
-                      className="pressable p-1 text-faint opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
-                      aria-label="ลบรายการ"
+                      onClick={() => setEditingTx(t)}
+                      className="pressable flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left"
                     >
-                      <IconDelete size={16} />
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface2 text-lg">
+                        {isTransfer ? (
+                          <IconSwap size={16} className="text-sub" />
+                        ) : (
+                          icon || "•"
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px]">
+                          {name}
+                        </span>
+                        <span className="block text-xs text-faint">
+                          {fmtThaiDate(t.date)}
+                          {t.note ? ` · ${t.note}` : ""}
+                        </span>
+                      </span>
+                      <span
+                        className="tabular font-zen text-[15px] font-medium"
+                        style={{
+                          color: isTransfer
+                            ? "var(--neutral)"
+                            : isIn
+                              ? "var(--income)"
+                              : "var(--expense)",
+                        }}
+                      >
+                        {isTransfer ? "" : isIn ? "+" : "−"}฿{fmt(t.amount)}
+                      </span>
                     </button>
                   </li>
                 );
@@ -263,6 +283,52 @@ export function Home({
           </>
         )}
       </section>
+
+      {/* เตือนสำรองข้อมูล */}
+      {showBackupNudge && (
+        <section
+          className="rise mt-6 rounded-2xl p-4"
+          style={{
+            background: "color-mix(in srgb, var(--accent) 7%, var(--surface))",
+            border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
+          }}
+        >
+          <p className="text-sm font-medium">ยังไม่ได้สำรองข้อมูลนานแล้ว</p>
+          <p className="pt-1 text-xs text-sub">
+            ข้อมูลอยู่ในเครื่องนี้เท่านั้น — ส่งออกไฟล์เก็บไว้กันหาย
+          </p>
+          <div className="flex gap-2 pt-3">
+            <button
+              onClick={async () => {
+                await downloadBackup(db);
+                showToast("ส่งออกไฟล์ backup แล้ว");
+              }}
+              className="pressable rounded-xl px-4 py-2 text-sm font-semibold text-white"
+              style={{ background: "var(--accent)" }}
+            >
+              สำรองตอนนี้
+            </button>
+            <button
+              onClick={() =>
+                db.kv.put({ key: "backupSnooze", value: Date.now() + SNOOZE })
+              }
+              className="pressable rounded-xl px-4 py-2 text-sm text-sub"
+            >
+              ภายหลัง
+            </button>
+          </div>
+        </section>
+      )}
+
+      {editingTx && (
+        <TxEditor
+          tx={editingTx}
+          categories={categories}
+          pockets={pockets}
+          onClose={() => setEditingTx(null)}
+        />
+      )}
+      {historyOpen && <History onClose={() => setHistoryOpen(false)} />}
     </div>
   );
 }
