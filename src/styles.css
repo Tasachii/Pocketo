@@ -4,31 +4,36 @@
 
 /* ── โทนสีญี่ปุ่นดั้งเดิม ───────────────────────────────
    light = 和紙 (washi)  ·  dark = 墨 (sumi)              */
+/* สีข้อความทุกตัว (sub/faint/income/expense/neutral/warn) ผ่าน WCAG AA 4.5:1
+   บนพื้นที่ใช้จริง — ยกเว้น --accent (vermilion แบรนด์) ที่จงใจคงความสด
+   ใช้เป็นพื้นปุ่ม/กราฟิกเป็นหลัก ไม่ใช้เป็นข้อความเล็กบนพื้น */
 :root {
   --bg: #faf7f2;
   --surface: #ffffff;
   --surface2: #f1ede6;
   --ink: #26241f;
-  --sub: #6b675e;
-  --faint: #a39e92;
+  --sub: #5b574e;
+  --faint: #6b665c;
   --line: #e7e2d8;
   --accent: #d9402f; /* 朱 shu */
-  --income: #58855c; /* 抹茶 matcha */
-  --expense: #bf4a3e; /* 紅 beni */
-  --neutral: #3e5c76; /* 藍 ai */
+  --income: #2c6e34; /* 抹茶 matcha (เข้มสำหรับพื้นสว่าง) */
+  --expense: #b02a1f; /* 紅 beni */
+  --neutral: #2f567d; /* 藍 ai */
+  --warn: #8a6418; /* 山吹 yamabuki */
 }
 .dark {
   --bg: #131316;
   --surface: #1c1c21;
   --surface2: #26262c;
   --ink: #eceae4;
-  --sub: #a6a39b;
-  --faint: #6e6b64;
+  --sub: #aba79e;
+  --faint: #918d84; /* ผ่าน AA 4.5:1 บน surface2 (พื้นสว่างสุดที่ faint นั่งอยู่) */
   --line: #2c2c33;
   --accent: #e84b3c;
   --income: #8fbf8f;
   --expense: #e07b6f;
   --neutral: #93afc9;
+  --warn: #d9a441;
 }
 
 html,

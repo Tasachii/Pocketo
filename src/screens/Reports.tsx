@@ -16,7 +16,6 @@ const GROUP_COLORS: Record<KakeiboGroup, string> = {
 };
 
 export function Reports() {
-  const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const catById = useMemo(
     () => new Map(categories.map((c) => [c.id!, c])),
@@ -26,6 +25,22 @@ export function Reports() {
   const now = new Date();
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const mk = monthKey(ym.y, ym.m);
+
+  // โหลดเฉพาะหน้าต่าง 6 เดือนที่หน้านี้ต้องใช้ (ผ่าน index `date`)
+  // แทนการดึงทั้งตาราง — รายงานไม่เคยต้องใช้ข้อมูล all-time
+  const rangeStart = useMemo(() => {
+    const d = new Date(ym.y, ym.m - 5, 1);
+    return `${monthKey(d.getFullYear(), d.getMonth())}-01`;
+  }, [ym]);
+  const rangeEndExcl = useMemo(() => {
+    const d = new Date(ym.y, ym.m + 1, 1);
+    return `${monthKey(d.getFullYear(), d.getMonth())}-01`;
+  }, [ym]);
+  const txs =
+    useLiveQuery(
+      () => db.tx.where("date").between(rangeStart, rangeEndExcl, true, false).toArray(),
+      [rangeStart, rangeEndExcl],
+    ) ?? [];
 
   const shift = (d: number) =>
     setYm(({ y, m }) => {

@@ -56,6 +56,8 @@ export default defineConfig(({ mode }) => ({
     }),
   ],
   test: {
+    // unit tests = src/**/*.test.ts (Vitest) · e2e = e2e/*.spec.ts (Playwright)
+    include: ["src/**/*.test.ts"],
     environment: "node",
   },
 }));

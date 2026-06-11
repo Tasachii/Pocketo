@@ -108,6 +108,7 @@ export function Tax() {
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
+          aria-label="เลือกปีภาษี"
           className="rounded-xl border border-line bg-surface px-3 py-1.5 text-sm"
         >
           {years.map((y) => (
@@ -220,7 +221,7 @@ export function Tax() {
           </div>
 
           {result.notes.length > 0 && (
-            <ul className="space-y-1 pt-3 text-xs" style={{ color: "#b9842f" }}>
+            <ul className="space-y-1 pt-3 text-xs" style={{ color: "var(--warn)" }}>
               {result.notes.map((n, i) => (
                 <li key={i}>• {n}</li>
               ))}
