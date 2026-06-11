@@ -1,0 +1,75 @@
+import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useState } from "react";
+import { IconPlus } from "./components/Icons";
+import { QuickAdd } from "./components/QuickAdd";
+import { Stamp } from "./components/Stamp";
+import { TabBar, type TabId } from "./components/TabBar";
+import { db, seedIfEmpty } from "./db/db";
+import { Home } from "./screens/Home";
+import { Pockets } from "./screens/Pockets";
+import { Reports } from "./screens/Reports";
+import { Settings } from "./screens/Settings";
+import { Tax } from "./screens/Tax";
+import { useTheme } from "./state/useTheme";
+
+export default function App() {
+  const { mode, setMode, cycle } = useTheme();
+  const [tab, setTab] = useState<TabId>("home");
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [stamp, setStamp] = useState(false);
+
+  useEffect(() => {
+    void seedIfEmpty();
+  }, []);
+
+  const pockets =
+    useLiveQuery(() => db.pockets.orderBy("sortOrder").toArray(), []) ?? [];
+  const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
+
+  const onSaved = () => {
+    setStamp(true);
+    setTimeout(() => setStamp(false), 1150);
+  };
+
+  const showFab = !quickOpen && tab !== "settings" && tab !== "tax";
+
+  return (
+    <div
+      className="mx-auto min-h-screen max-w-md px-5 pb-32"
+      style={{ paddingTop: "max(env(safe-area-inset-top), 12px)" }}
+    >
+      {tab === "home" && <Home themeMode={mode} onCycleTheme={cycle} />}
+      {tab === "pockets" && <Pockets />}
+      {tab === "reports" && <Reports />}
+      {tab === "tax" && <Tax />}
+      {tab === "settings" && <Settings mode={mode} setMode={setMode} />}
+
+      {showFab && (
+        <button
+          onClick={() => setQuickOpen(true)}
+          aria-label="จดรายการใหม่"
+          className="pressable fixed z-40 flex h-14 w-14 items-center justify-center rounded-full text-white"
+          style={{
+            background: "var(--accent)",
+            right: "max(calc(50vw - 13rem), 1.25rem)",
+            bottom: "calc(76px + env(safe-area-inset-bottom))",
+            boxShadow:
+              "0 6px 20px color-mix(in srgb, var(--accent) 45%, transparent)",
+          }}
+        >
+          <IconPlus size={26} />
+        </button>
+      )}
+
+      <TabBar active={tab} onChange={setTab} />
+      <QuickAdd
+        open={quickOpen}
+        categories={categories}
+        pockets={pockets}
+        onClose={() => setQuickOpen(false)}
+        onSaved={onSaved}
+      />
+      <Stamp visible={stamp} />
+    </div>
+  );
+}
