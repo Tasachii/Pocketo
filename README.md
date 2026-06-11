@@ -9,7 +9,7 @@ Minimal Japanese-inspired income & expense tracker — an installable PWA with k
 
 **Live app:** https://tasachii.github.io/pocketo/
 
-**Docs:** [DESCRIPTION.md](DESCRIPTION.md) (concept, class diagram) · [PROJECT_GUIDE.md](PROJECT_GUIDE.md) (how the code works, file by file) · [ROADMAP.md](ROADMAP.md) (what to build next) · [PRIVACY.md](PRIVACY.md) · [CHANGELOG.md](CHANGELOG.md)
+**Docs:** [PROJECT_GUIDE.md](PROJECT_GUIDE.md) (how the code works, file by file) · [CONTRIBUTING.md](CONTRIBUTING.md) (read before changing code — conventions & gotchas) · [DESCRIPTION.md](DESCRIPTION.md) (concept, class diagram) · [ROADMAP.md](ROADMAP.md) (what to build next) · [PRIVACY.md](PRIVACY.md) · [CHANGELOG.md](CHANGELOG.md)
 
 | | | |
 |---|---|---|
