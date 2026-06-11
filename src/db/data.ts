@@ -3,29 +3,12 @@ import { dueDates } from "../core/recurring";
 import type { Pocket, Satang, Tx } from "../core/types";
 import { db } from "./db";
 
-export const THAI_MONTHS = [
-  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
-];
-export const THAI_WEEKDAYS = [
-  "อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์",
-];
-export const THAI_MONTHS_SHORT = [
-  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
-  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
-];
-
 export function todayStr(): string {
   return new Date().toLocaleDateString("en-CA");
 }
 
 export function monthKey(y: number, m0: number): string {
   return `${y}-${String(m0 + 1).padStart(2, "0")}`;
-}
-
-export function fmtThaiDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]}`;
 }
 
 /** ยอดคงเหลือทุกกล่อง คำนวณจากรายการเสมอ (ไม่เก็บ balance — ยอดไม่มีวันเพี้ยน) */
@@ -89,7 +72,7 @@ async function createAutoAllocations(
       amount: a.amount,
       pocketId: main.id!,
       toPocketId: a.pocketId,
-      note: "แบ่งอัตโนมัติ",
+      // ไม่เก็บ note — การแสดงผลของ TRANSFER ใช้ "โอนไป {กล่อง}" อยู่แล้ว (i18n)
       date,
       parentId,
       createdAt,
@@ -172,7 +155,7 @@ export async function applyDueRecurring(
           amount: r.amount,
           pocketId: r.pocketId,
           categoryId: r.categoryId,
-          note: r.note || "รายการประจำ",
+          note: r.note || undefined, // ไม่มี note ของผู้ใช้ → แสดง fallback เป็นชื่อหมวด
           date,
         });
       }

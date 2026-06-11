@@ -100,8 +100,14 @@ export interface TaxResult {
   /** เงินคืนภาษี (≥ 0) — แยก field ไม่ใช้ค่าติดลบ */
   taxRefund: number;
   effectiveRate: number; // ต่อเงินได้ทั้งหมด
-  notes: string[];
+  notes: TaxNote[];
 }
+
+/** หมายเหตุเพดานลดหย่อน — เป็น code เพื่อให้ UI แปลภาษาเอง (core ไม่ผูก i18n) */
+export type TaxNote =
+  | { code: "cap"; field: string; max: number }
+  | { code: "lifeHealth"; max: number }
+  | { code: "retire"; max: number };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -123,17 +129,17 @@ export function calcThaiTax(
   input: TaxInput,
   config: TaxYearConfig = TAX_YEAR_2568,
 ): TaxResult {
-  const notes: string[] = [];
+  const notes: TaxNote[] = [];
   const income = Math.max(0, input.totalIncome);
   const d = input.deductions ?? {};
   const cap = (
     value: number | undefined,
     limit: number,
-    label: string,
+    field: string,
   ): number => {
     const v = Math.max(0, value ?? 0);
     if (v > limit) {
-      notes.push(`${label} ใช้ได้สูงสุด ${limit.toLocaleString()} บาท`);
+      notes.push({ code: "cap", field, max: limit });
       return limit;
     }
     return v;
@@ -150,23 +156,21 @@ export function calcThaiTax(
   const socialSecurity = cap(
     d.socialSecurity,
     config.socialSecurityCap,
-    "ประกันสังคม",
+    "ss",
   );
 
   let lifeInsurance = cap(
     d.lifeInsurance,
     config.lifeInsuranceCap,
-    "เบี้ยประกันชีวิต",
+    "life",
   );
   let healthInsurance = cap(
     d.healthInsurance,
     config.healthInsuranceCap,
-    "เบี้ยประกันสุขภาพ",
+    "health",
   );
   if (lifeInsurance + healthInsurance > config.lifeHealthCombinedCap) {
-    notes.push(
-      `ประกันชีวิต+สุขภาพ รวมใช้ได้ไม่เกิน ${config.lifeHealthCombinedCap.toLocaleString()} บาท`,
-    );
+    notes.push({ code: "lifeHealth", max: config.lifeHealthCombinedCap });
     healthInsurance = Math.max(
       0,
       config.lifeHealthCombinedCap - lifeInsurance,
@@ -177,19 +181,17 @@ export function calcThaiTax(
   let ssf = cap(
     d.ssf,
     Math.min(income * config.ssfRate, config.ssfCap),
-    "SSF",
+    "ssf",
   );
   let rmf = cap(
     d.rmf,
     Math.min(income * config.rmfRate, config.rmfCap),
-    "RMF",
+    "rmf",
   );
-  let pvd = cap(d.pvd, income * config.pvdRate, "กองทุนสำรองเลี้ยงชีพ");
+  let pvd = cap(d.pvd, income * config.pvdRate, "pvd");
   const retireTotal = ssf + rmf + pvd;
   if (retireTotal > config.retirementCombinedCap) {
-    notes.push(
-      `กลุ่มเกษียณ (SSF+RMF+PVD) รวมใช้ได้ไม่เกิน ${config.retirementCombinedCap.toLocaleString()} บาท`,
-    );
+    notes.push({ code: "retire", max: config.retirementCombinedCap });
     // ตัดเกินตามลำดับ pvd → rmf → ssf (ตัดตัวท้ายของฟอร์มก่อน เพื่อให้ deterministic)
     let excess = retireTotal - config.retirementCombinedCap;
     const trim = (v: number) => {
@@ -205,9 +207,9 @@ export function calcThaiTax(
   const tesg = cap(
     d.tesg,
     Math.min(income * config.tesgRate, config.tesgCap),
-    "Thai ESG",
+    "tesg",
   );
-  const homeLoan = cap(d.homeLoan, config.homeLoanCap, "ดอกเบี้ยบ้าน");
+  const homeLoan = cap(d.homeLoan, config.homeLoanCap, "home");
 
   const allowanceTotal =
     personal +
@@ -228,7 +230,7 @@ export function calcThaiTax(
   const donationApplied = cap(
     d.donation,
     round2(baseAfterAllowance * config.donationRate),
-    "เงินบริจาค (10% ของเงินได้หลังหักลดหย่อน)",
+    "donation",
   );
 
   // 4) เงินได้สุทธิ → ภาษีขั้นบันได

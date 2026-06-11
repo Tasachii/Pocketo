@@ -1,5 +1,5 @@
 import { fmt } from "./money";
-import { KAKEIBO_LABEL, type KakeiboGroup, type Satang } from "./types";
+import type { KakeiboGroup, Satang } from "./types";
 
 export interface ShareCardData {
   monthLabel: string;
@@ -7,6 +7,13 @@ export interface ShareCardData {
   expense: Satang;
   topCats: Array<{ icon: string; name: string; amount: Satang }>;
   groups: Record<KakeiboGroup, Satang>;
+  /** ป้ายที่แปลแล้ว ส่งมาจาก UI (core ไม่ผูกกับ i18n) */
+  labels: {
+    balance: string;
+    top: string;
+    pillars: string;
+    pillar: Record<KakeiboGroup, string>;
+  };
 }
 
 // การ์ดแชร์ render เป็นธีมหมึกเสมอ — เอกลักษณ์แบรนด์ชัดบน social
@@ -65,7 +72,7 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
   const net = data.income - data.expense;
   ctx.fillStyle = SUB;
   ctx.font = `400 38px ${THAI}`;
-  ctx.fillText("คงเหลือเดือนนี้", M, 280);
+  ctx.fillText(data.labels.balance, M, 280);
   ctx.fillStyle = net >= 0 ? INK : EXPENSE;
   ctx.font = `500 130px ${ZEN}`;
   ctx.fillText(`฿${fmt(net)}`, M, 420);
@@ -89,7 +96,7 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
   if (data.topCats.length > 0) {
     ctx.fillStyle = SUB;
     ctx.font = `500 36px ${THAI}`;
-    ctx.fillText("ใช้มากสุด", M, y);
+    ctx.fillText(data.labels.top, M, y);
     y += 70;
     for (const c of data.topCats.slice(0, 4)) {
       ctx.font = `400 44px ${THAI}`;
@@ -108,7 +115,7 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
   y = Math.max(y + 40, 1010);
   ctx.fillStyle = SUB;
   ctx.font = `500 36px ${THAI}`;
-  ctx.fillText("สี่เสาการใช้เงิน", M, y);
+  ctx.fillText(data.labels.pillars, M, y);
   y += 56;
   const barW = W - M * 2 - 300;
   for (const g of Object.keys(data.groups) as KakeiboGroup[]) {
@@ -116,7 +123,7 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
     const pct = data.expense > 0 ? v / data.expense : 0;
     ctx.fillStyle = INK;
     ctx.font = `400 34px ${THAI}`;
-    ctx.fillText(KAKEIBO_LABEL[g], M, y);
+    ctx.fillText(data.labels.pillar[g], M, y);
     // ราง + แท่ง
     const bx = M + 220;
     ctx.fillStyle = SURFACE;
