@@ -39,7 +39,26 @@ export interface Category {
   type: "income" | "expense";
   /** 4 เสาแบบ kakeibo — เฉพาะรายจ่าย */
   group?: KakeiboGroup;
+  /** งบประมาณต่อเดือน (สตางค์) — เฉพาะรายจ่าย ไม่ตั้ง = ไม่จำกัด */
+  budget?: Satang;
   sortOrder: number;
+}
+
+export interface Recurring {
+  id?: number;
+  type: "IN" | "OUT";
+  amount: Satang;
+  pocketId: number;
+  categoryId?: number;
+  note?: string;
+  /** วันที่ของเดือน 1–31 — เดือนสั้นจะเลื่อนเป็นวันสุดท้ายของเดือน */
+  day: number;
+  /** วันที่สร้างกฎ — ไม่สร้างรายการย้อนหลังก่อนวันนี้ */
+  since: string;
+  /** วันล่าสุดที่สร้างรายการไปแล้ว — กันสร้างซ้ำ */
+  lastPosted?: string;
+  active: 0 | 1;
+  createdAt: number;
 }
 
 export const KAKEIBO_LABEL: Record<KakeiboGroup, string> = {

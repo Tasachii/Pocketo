@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { Category, Pocket, Tx } from "../core/types";
+import type { Category, Pocket, Recurring, Tx } from "../core/types";
 
 export interface KV {
   key: string;
@@ -10,6 +10,7 @@ export class PocketoDB extends Dexie {
   tx!: EntityTable<Tx, "id">;
   pockets!: EntityTable<Pocket, "id">;
   categories!: EntityTable<Category, "id">;
+  recurring!: EntityTable<Recurring, "id">;
   kv!: EntityTable<KV, "key">;
 
   constructor(name = "pocketo") {
@@ -20,6 +21,10 @@ export class PocketoDB extends Dexie {
       pockets: "++id, sortOrder",
       categories: "++id, type, sortOrder",
       kv: "key",
+    });
+    // schema v2 — เพิ่มรายการประจำ (budget ของ category เป็น field ใหม่ ไม่ต้อง index)
+    this.version(2).stores({
+      recurring: "++id, active",
     });
   }
 }

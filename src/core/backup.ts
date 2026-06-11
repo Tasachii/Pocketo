@@ -1,28 +1,32 @@
 import type { PocketoDB } from "../db/db";
-import type { Category, Pocket, Tx } from "./types";
+import type { Category, Pocket, Recurring, Tx } from "./types";
 
 export interface BackupFile {
   app: "pocketo";
-  schemaVersion: 1;
+  /** v1 = ไม่มี recurring, v2 = มี recurring — import รองรับทั้งคู่ */
+  schemaVersion: 1 | 2;
   exportedAt: string;
   pockets: Pocket[];
   categories: Category[];
   tx: Tx[];
+  recurring?: Recurring[];
 }
 
 export async function exportData(db: PocketoDB): Promise<BackupFile> {
-  const [pockets, categories, tx] = await Promise.all([
+  const [pockets, categories, tx, recurring] = await Promise.all([
     db.pockets.toArray(),
     db.categories.toArray(),
     db.tx.toArray(),
+    db.recurring.toArray(),
   ]);
   return {
     app: "pocketo",
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: new Date().toISOString(),
     pockets,
     categories,
     tx,
+    recurring,
   };
 }
 
@@ -31,10 +35,11 @@ export function validateBackup(data: unknown): data is BackupFile {
   const d = data as Record<string, unknown>;
   return (
     d.app === "pocketo" &&
-    d.schemaVersion === 1 &&
+    (d.schemaVersion === 1 || d.schemaVersion === 2) &&
     Array.isArray(d.pockets) &&
     Array.isArray(d.categories) &&
-    Array.isArray(d.tx)
+    Array.isArray(d.tx) &&
+    (d.recurring === undefined || Array.isArray(d.recurring))
   );
 }
 
@@ -48,16 +53,18 @@ export async function importData(
   }
   await db.transaction(
     "rw",
-    [db.tx, db.pockets, db.categories, db.kv],
+    [db.tx, db.pockets, db.categories, db.recurring, db.kv],
     async () => {
       await Promise.all([
         db.tx.clear(),
         db.pockets.clear(),
         db.categories.clear(),
+        db.recurring.clear(),
       ]);
       await db.pockets.bulkAdd(data.pockets);
       await db.categories.bulkAdd(data.categories);
       await db.tx.bulkAdd(data.tx);
+      if (data.recurring?.length) await db.recurring.bulkAdd(data.recurring);
       await db.kv.put({ key: "seeded", value: 1 });
     },
   );

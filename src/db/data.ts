@@ -1,4 +1,5 @@
 import { splitByPercent } from "../core/allocate";
+import { dueDates } from "../core/recurring";
 import type { Pocket, Satang, Tx } from "../core/types";
 import { db } from "./db";
 
@@ -80,6 +81,36 @@ export async function saveQuickTx(input: QuickTxInput): Promise<void> {
       });
     }
   });
+}
+
+/**
+ * สร้างรายการจากกฎประจำที่ครบกำหนดแล้วทั้งหมด (เรียกตอนเปิดแอพ)
+ * ตามเก็บย้อนหลังทุกเดือนที่พลาด และอัพเดท lastPosted กันสร้างซ้ำ
+ */
+export async function applyDueRecurring(
+  today: string = todayStr(),
+): Promise<number> {
+  const rules = await db.recurring.where("active").equals(1).toArray();
+  let posted = 0;
+  for (const r of rules) {
+    const dates = dueDates(r, today);
+    if (dates.length === 0) continue;
+    await db.transaction("rw", [db.tx, db.pockets, db.recurring], async () => {
+      for (const date of dates) {
+        await saveQuickTx({
+          type: r.type,
+          amount: r.amount,
+          pocketId: r.pocketId,
+          categoryId: r.categoryId,
+          note: r.note || "รายการประจำ",
+          date,
+        });
+      }
+      await db.recurring.update(r.id!, { lastPosted: dates[dates.length - 1] });
+    });
+    posted += dates.length;
+  }
+  return posted;
 }
 
 export async function transfer(

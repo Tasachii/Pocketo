@@ -69,6 +69,37 @@ describe("backup round-trip", () => {
     expect(await db.categories.count()).toBe(before);
   });
 
+  it("recurring ไป-กลับครบ และไฟล์ v1 เก่า (ไม่มี recurring) นำเข้าได้", async () => {
+    await seedIfEmpty(db);
+    await db.recurring.add({
+      type: "IN",
+      amount: 3_800_000,
+      pocketId: 1,
+      categoryId: 1,
+      note: "เงินเดือน",
+      day: 25,
+      since: "2026-06-01",
+      active: 1,
+      createdAt: 1,
+    });
+    const backup = await exportData(db);
+    expect(backup.schemaVersion).toBe(2);
+    expect(backup.recurring).toHaveLength(1);
+
+    const db2 = new PocketoDB(`test-rec-${n}`);
+    await importData(db2, JSON.parse(JSON.stringify(backup)));
+    expect(await db2.recurring.count()).toBe(1);
+
+    // ไฟล์ v1 จากแอพเวอร์ชันก่อน — ไม่มี field recurring
+    const v1 = { ...backup, schemaVersion: 1 as const };
+    delete (v1 as Partial<typeof v1>).recurring;
+    const db3 = new PocketoDB(`test-v1-${n}`);
+    await importData(db3, JSON.parse(JSON.stringify(v1)));
+    expect(await db3.tx.count()).toBe(0);
+    expect(await db3.recurring.count()).toBe(0);
+    expect(await db3.categories.count()).toBe(backup.categories.length);
+  });
+
   it("seedIfEmpty ไม่ seed ซ้ำหลังผู้ใช้ลบหมวด", async () => {
     await seedIfEmpty(db);
     await db.categories.clear();
