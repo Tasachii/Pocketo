@@ -1,0 +1,73 @@
+import Dexie, { type EntityTable } from "dexie";
+import type { Category, Pocket, Tx } from "../core/types";
+
+export interface KV {
+  key: string;
+  value: unknown;
+}
+
+export class PocketoDB extends Dexie {
+  tx!: EntityTable<Tx, "id">;
+  pockets!: EntityTable<Pocket, "id">;
+  categories!: EntityTable<Category, "id">;
+  kv!: EntityTable<KV, "key">;
+
+  constructor(name = "pocketo") {
+    super(name);
+    // schema v1 — ทุกการแก้โครงสร้างในอนาคตต้องเพิ่ม version ใหม่ ห้ามแก้บรรทัดนี้
+    this.version(1).stores({
+      tx: "++id, date, type, pocketId, categoryId",
+      pockets: "++id, sortOrder",
+      categories: "++id, type, sortOrder",
+      kv: "key",
+    });
+  }
+}
+
+export const db = new PocketoDB();
+
+export const DEFAULT_POCKET: Omit<Pocket, "id"> = {
+  name: "ใช้จ่าย",
+  icon: "👛",
+  isMain: 1,
+  sortOrder: 0,
+};
+
+export const DEFAULT_CATEGORIES: Omit<Category, "id">[] = [
+  // รายรับ
+  { name: "เงินเดือน", icon: "💼", type: "income", sortOrder: 0 },
+  { name: "โบนัส", icon: "🎁", type: "income", sortOrder: 1 },
+  { name: "รายได้เสริม", icon: "🛠️", type: "income", sortOrder: 2 },
+  { name: "ดอกเบี้ย/ปันผล", icon: "📈", type: "income", sortOrder: 3 },
+  // รายจ่าย — จัดเข้า 4 เสาแบบ kakeibo
+  { name: "อาหาร", icon: "🍜", type: "expense", group: "needs", sortOrder: 0 },
+  { name: "เดินทาง", icon: "🚆", type: "expense", group: "needs", sortOrder: 1 },
+  { name: "บ้าน/บิล", icon: "🏠", type: "expense", group: "needs", sortOrder: 2 },
+  { name: "ของใช้จำเป็น", icon: "🧺", type: "expense", group: "needs", sortOrder: 3 },
+  { name: "สุขภาพ", icon: "💊", type: "expense", group: "needs", sortOrder: 4 },
+  { name: "กาแฟ/คาเฟ่", icon: "☕", type: "expense", group: "wants", sortOrder: 5 },
+  { name: "ช้อปปิ้ง", icon: "🛍️", type: "expense", group: "wants", sortOrder: 6 },
+  { name: "บันเทิง", icon: "🎬", type: "expense", group: "wants", sortOrder: 7 },
+  { name: "หนังสือ/เรียนรู้", icon: "📚", type: "expense", group: "culture", sortOrder: 8 },
+  { name: "ให้/บริจาค", icon: "🤝", type: "expense", group: "culture", sortOrder: 9 },
+  { name: "ซ่อม/ฉุกเฉิน", icon: "🔧", type: "expense", group: "extra", sortOrder: 10 },
+];
+
+/** seed ครั้งแรกเท่านั้น — ผู้ใช้ลบ/แก้ของตัวเองได้โดยไม่ถูก seed ทับ */
+export async function seedIfEmpty(database: PocketoDB = db): Promise<void> {
+  const seeded = await database.kv.get("seeded");
+  if (seeded) return;
+  await database.transaction(
+    "rw",
+    [database.pockets, database.categories, database.kv],
+    async () => {
+      if ((await database.pockets.count()) === 0) {
+        await database.pockets.add(DEFAULT_POCKET as Pocket);
+      }
+      if ((await database.categories.count()) === 0) {
+        await database.categories.bulkAdd(DEFAULT_CATEGORIES as Category[]);
+      }
+      await database.kv.put({ key: "seeded", value: 1 });
+    },
+  );
+}
