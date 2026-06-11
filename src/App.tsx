@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
+import { useT } from "./i18n";
 import { Feedback } from "./components/Feedback";
 import { IconPlus } from "./components/Icons";
 import { Onboarding, ONBOARDED_KEY } from "./components/Onboarding";
@@ -16,6 +17,7 @@ import { Tax } from "./screens/Tax";
 import { useTheme } from "./state/useTheme";
 
 export default function App() {
+  const { t } = useT();
   const { mode, setMode, cycle } = useTheme();
   const [tab, setTab] = useState<TabId>("home");
   const [quickOpen, setQuickOpen] = useState(false);
@@ -56,7 +58,7 @@ export default function App() {
       {showFab && (
         <button
           onClick={() => setQuickOpen(true)}
-          aria-label="จดรายการใหม่"
+          aria-label={t("aria_addNew")}
           className="pressable fixed z-40 flex h-14 w-14 items-center justify-center rounded-full text-white"
           style={{
             background: "var(--accent)",

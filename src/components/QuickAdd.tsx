@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useT } from "../i18n";
 import { parseAmount } from "../core/money";
 import type { Category, Pocket } from "../core/types";
 import { saveQuickTx, todayStr } from "../db/data";
@@ -23,6 +24,7 @@ export function QuickAdd({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useT();
   const main = pockets.find((p) => p.isMain);
   const [dir, setDir] = useState<TxDir>("OUT");
   const [amountStr, setAmountStr] = useState("");
@@ -99,7 +101,7 @@ export function QuickAdd({
           <button
             onClick={() => (step === "category" ? setStep("amount") : onClose())}
             className="pressable -ml-2 p-2 text-sub"
-            aria-label={step === "category" ? "ย้อนกลับ" : "ปิด"}
+            aria-label={step === "category" ? t("back") : t("close")}
           >
             {step === "category" ? <IconBack /> : <IconClose />}
           </button>
@@ -119,7 +121,7 @@ export function QuickAdd({
                     : { color: "var(--faint)" }
                 }
               >
-                {d === "OUT" ? "รายจ่าย" : "รายรับ"}
+                {d === "OUT" ? t("qa_expense") : t("qa_income")}
               </button>
             ))}
           </div>
@@ -156,13 +158,13 @@ export function QuickAdd({
               className="pressable rounded-2xl py-4 font-thai text-lg font-semibold text-white disabled:opacity-30"
               style={{ background: "var(--accent)" }}
             >
-              ถัดไป
+              {t("next")}
             </button>
           </>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
             <p className="pb-3 pt-1 text-center text-sm text-sub">
-              แตะหมวดเพื่อบันทึกทันที
+              {t("qa_tapToSave")}
             </p>
             <div className="grid flex-1 grid-cols-4 content-start gap-2 overflow-y-auto">
               {cats.map((c) => (
@@ -208,7 +210,7 @@ export function QuickAdd({
                 <input
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="โน้ต (ไม่บังคับ)"
+                  placeholder={t("noteOptional")}
                   className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
                 />
                 <input

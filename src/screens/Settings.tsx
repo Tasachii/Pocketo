@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { setLang, useT } from "../i18n";
 import { confirmDialog, promptDialog, showToast } from "../components/Feedback";
 import { Field, inputCls, Overlay } from "../components/Modal";
 import { RecurringManager } from "../components/RecurringManager";
@@ -7,9 +8,10 @@ import { downloadBackup, importData } from "../core/backup";
 import { decryptBackup, isEncryptedBackup } from "../core/crypto";
 import { fmt, fmtBaht, parseAmount } from "../core/money";
 import type { Category, KakeiboGroup } from "../core/types";
-import { KAKEIBO_LABEL } from "../core/types";
 import { db } from "../db/db";
 import type { ThemeMode } from "../state/useTheme";
+
+const KAKEIBO_GROUPS: KakeiboGroup[] = ["needs", "wants", "culture", "extra"];
 
 export function Settings({
   mode,
@@ -18,6 +20,7 @@ export function Settings({
   mode: ThemeMode;
   setMode: (m: ThemeMode) => void;
 }) {
+  const { t, lang } = useT();
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
   const fileRef = useRef<HTMLInputElement>(null);
@@ -38,53 +41,53 @@ export function Settings({
   }, []);
 
   const doExport = async () => {
-    const wantEncrypt = await confirmDialog("ใส่รหัสผ่านป้องกันไฟล์ backup?", {
+    const wantEncrypt = await confirmDialog(t("set_encryptQ"), {
       detail:
-        "ถ้าใส่รหัสผ่าน ไฟล์จะถูกเข้ารหัส เปิดได้เฉพาะคนที่รู้รหัส — แต่ถ้าลืมรหัสจะกู้ไม่ได้",
-      confirmLabel: "ใส่รหัสผ่าน",
+        t("set_encryptDesc"),
+      confirmLabel: t("set_setPasswordBtn"),
     });
     let passphrase: string | undefined;
     if (wantEncrypt) {
-      const pw = await promptDialog("ตั้งรหัสผ่านสำหรับไฟล์นี้", {
+      const pw = await promptDialog(t("set_setPassword"), {
         password: true,
-        placeholder: "รหัสผ่าน",
-        confirmLabel: "เข้ารหัสและบันทึก",
+        placeholder: t("set_passwordPlaceholder"),
+        confirmLabel: t("set_encryptSave"),
       });
       if (pw == null) return; // ยกเลิก
       if (pw.length < 4) {
-        setMsg("รหัสผ่านสั้นเกินไป (อย่างน้อย 4 ตัว)");
+        setMsg(t("set_pwTooShort"));
         return;
       }
       passphrase = pw;
     }
     await downloadBackup(db, passphrase);
-    showToast("ส่งออกไฟล์ backup แล้ว");
+    showToast(t("set_exported"));
   };
 
   const doImport = async (file: File) => {
     try {
       let data: unknown = JSON.parse(await file.text());
       if (isEncryptedBackup(data)) {
-        const pw = await promptDialog("ไฟล์นี้ถูกเข้ารหัส", {
-          detail: "ใส่รหัสผ่านเพื่อปลดล็อก",
+        const pw = await promptDialog(t("set_fileEncrypted"), {
+          detail: t("set_enterPassword"),
           password: true,
-          placeholder: "รหัสผ่าน",
-          confirmLabel: "ปลดล็อก",
+          placeholder: t("set_passwordPlaceholder"),
+          confirmLabel: t("set_unlock"),
         });
         if (pw == null) return;
         data = await decryptBackup(data, pw); // โยน error ถ้ารหัสผิด
       }
-      const ok = await confirmDialog("นำเข้าข้อมูลจากไฟล์?", {
-        detail: "ข้อมูลทั้งหมดที่มีอยู่ตอนนี้จะถูกแทนที่ด้วยข้อมูลในไฟล์",
-        confirmLabel: "นำเข้า",
+      const ok = await confirmDialog(t("set_importQ"), {
+        detail: t("set_importDesc"),
+        confirmLabel: t("set_importBtn"),
         danger: true,
       });
       if (!ok) return;
       await importData(db, data);
       await db.kv.put({ key: "lastExport", value: Date.now() });
-      showToast("นำเข้าข้อมูลเรียบร้อย");
+      showToast(t("set_importDone"));
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "นำเข้าไม่สำเร็จ");
+      setMsg(e instanceof Error ? e.message : t("set_importFail"));
     }
   };
 
@@ -93,24 +96,24 @@ export function Settings({
     setStorage((s) => (s ? { ...s, persisted: !!ok } : s));
     setMsg(
       ok
-        ? "เบราว์เซอร์รับคำขอเก็บข้อมูลถาวรแล้ว"
-        : "เบราว์เซอร์ยังไม่อนุมัติ — ติดตั้งเป็นแอพช่วยได้",
+        ? t("set_persistOk")
+        : t("set_persistNo"),
     );
   };
 
   const clearAll = async () => {
     if (
-      !(await confirmDialog("ลบข้อมูลทั้งหมดถาวร?", {
-        detail: "ทุกรายการ กล่อง หมวด และรายการประจำจะหายไป",
-        confirmLabel: "ลบทั้งหมด",
+      !(await confirmDialog(t("set_clearQ"), {
+        detail: t("set_clearDesc"),
+        confirmLabel: t("set_clearBtn"),
         danger: true,
       }))
     )
       return;
     if (
-      !(await confirmDialog("ยืนยันอีกครั้ง", {
-        detail: "กู้คืนไม่ได้ถ้าไม่มีไฟล์ backup",
-        confirmLabel: "ยืนยันลบ",
+      !(await confirmDialog(t("set_clearAgain"), {
+        detail: t("set_clearAgainDesc"),
+        confirmLabel: t("set_clearAgainBtn"),
         danger: true,
       }))
     )
@@ -122,16 +125,16 @@ export function Settings({
   return (
     <div className="space-y-8">
       <header className="rise pt-2">
-        <h1 className="font-zen text-xl font-bold tracking-tight">ตั้งค่า</h1>
+        <h1 className="font-zen text-xl font-bold tracking-tight">{t("nav_settings")}</h1>
       </header>
 
-      <Section title="ธีม" className="rise rise-1">
+      <Section title={t("set_theme")} className="rise rise-1">
         <div className="flex rounded-2xl bg-surface2 p-1">
           {(
             [
-              ["dark", "มืด"],
-              ["light", "สว่าง"],
-              ["auto", "ตามระบบ"],
+              ["dark", t("theme_dark")],
+              ["light", t("theme_light")],
+              ["auto", t("theme_auto")],
             ] as Array<[ThemeMode, string]>
           ).map(([m, label]) => (
             <button
@@ -153,19 +156,41 @@ export function Settings({
         </div>
       </Section>
 
-      <Section title="ข้อมูล" className="rise rise-2">
+      <Section title={t("set_language")} className="rise rise-1">
+        <div className="flex rounded-2xl bg-surface2 p-1">
+          {(["th", "en"] as const).map((l) => (
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              className="pressable flex-1 rounded-xl py-2 text-sm font-medium"
+              style={
+                lang === l
+                  ? {
+                      background: "var(--surface)",
+                      boxShadow: "0 1px 4px rgb(0 0 0 / 0.12)",
+                    }
+                  : { color: "var(--faint)" }
+              }
+            >
+              {l === "th" ? t("lang_th") : t("lang_en")}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title={t("set_data")} className="rise rise-2">
         <div className="space-y-2">
           <button onClick={doExport} className="pressable w-full rounded-2xl bg-surface px-4 py-3 text-left text-sm">
-            ส่งออกข้อมูล (ไฟล์ JSON)
+            {t("set_export")}
             <span className="block pt-0.5 text-xs text-faint">
-              เก็บไว้เป็น backup หรือย้ายเครื่อง
+              {t("set_exportDesc")}
             </span>
           </button>
           <button
             onClick={() => fileRef.current?.click()}
             className="pressable w-full rounded-2xl bg-surface px-4 py-3 text-left text-sm"
           >
-            นำเข้าข้อมูลจากไฟล์ backup
+            {t("set_import")}
           </button>
           <input
             ref={fileRef}
@@ -182,11 +207,11 @@ export function Settings({
             onClick={requestPersist}
             className="pressable w-full rounded-2xl bg-surface px-4 py-3 text-left text-sm"
           >
-            ขอพื้นที่เก็บข้อมูลถาวร
+            {t("set_persist")}
             <span className="block pt-0.5 text-xs text-faint">
               {storage?.persisted
-                ? "✓ ได้รับอนุมัติแล้ว — ข้อมูลปลอดภัยจากการถูกล้างอัตโนมัติ"
-                : "ลดโอกาสที่เบราว์เซอร์ล้างข้อมูลเมื่อไม่ได้เปิดนาน"}
+                ? t("set_persistGranted")
+                : t("set_persistDesc")}
             </span>
           </button>
           <button
@@ -194,23 +219,19 @@ export function Settings({
             className="pressable w-full rounded-2xl px-4 py-3 text-left text-sm"
             style={{ color: "var(--expense)" }}
           >
-            ลบข้อมูลทั้งหมด
+            {t("set_clear")}
           </button>
           {msg && <p className="px-1 text-xs text-sub">{msg}</p>}
         </div>
       </Section>
 
-      <Section title="รายการประจำ" className="rise rise-3">
-        <p className="pb-3 text-xs text-faint">
-          เงินเดือน ค่าเช่า subscription — สร้างให้อัตโนมัติทุกเดือนตามวันที่กำหนด
-        </p>
+      <Section title={t("set_recurring")} className="rise rise-3">
+        <p className="pb-3 text-xs text-faint">{t("set_recurringDesc")}</p>
         <RecurringManager />
       </Section>
 
-      <Section title="หมวดหมู่" className="rise rise-3">
-        <p className="pb-3 text-xs text-faint">
-          แตะหมวดเพื่อแก้ไขหรือตั้งงบประมาณต่อเดือน
-        </p>
+      <Section title={t("set_categories")} className="rise rise-3">
+        <p className="pb-3 text-xs text-faint">{t("set_categoriesHint")}</p>
         <CategoryManager />
         <ul className="space-y-1 pt-3">
           {categories
@@ -231,13 +252,13 @@ export function Settings({
                   <span className="flex-1">{c.name}</span>
                   {(c.budget ?? 0) > 0 && (
                     <span className="tabular text-xs text-sub">
-                      งบ {fmtBaht(c.budget!)}
+                      {t("set_budgetTag", { amount: fmtBaht(c.budget!) })}
                     </span>
                   )}
                   <span className="text-xs text-faint">
                     {c.type === "income"
-                      ? "รายรับ"
-                      : KAKEIBO_LABEL[c.group ?? "extra"]}
+                      ? t("qa_income")
+                      : t(`kakeibo_${c.group ?? "extra"}`)}
                   </span>
                 </button>
               </li>
@@ -252,19 +273,13 @@ export function Settings({
         )}
       </Section>
 
-      <Section title="เกี่ยวกับ" className="rise rise-4">
+      <Section title={t("set_about")} className="rise rise-4">
         <div className="rounded-2xl bg-surface p-4 text-sm leading-relaxed text-sub">
           <p className="pb-2 font-medium text-ink">
             Pocketo <span className="font-mincho text-faint">ポケット</span> · v0.1
           </p>
-          <p>
-            ข้อมูลทั้งหมดเก็บอยู่ในเครื่องของคุณเท่านั้น ไม่มีการส่งขึ้น
-            server ใดๆ — แนะนำให้ส่งออกไฟล์ backup เก็บไว้สม่ำเสมอ
-          </p>
-          <p className="pt-3 text-xs text-faint">
-            ติดตั้งเป็นแอพ: iPhone — Safari แตะปุ่มแชร์ → เพิ่มลงหน้าจอโฮม ·
-            Android — Chrome แตะเมนู ⋮ → ติดตั้งแอพ
-          </p>
+          <p>{t("set_aboutBody")}</p>
+          <p className="pt-3 text-xs text-faint">{t("set_installHint")}</p>
         </div>
       </Section>
     </div>
@@ -297,6 +312,7 @@ function CategoryDialog({
   inUse: boolean;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const [name, setName] = useState(category.name);
   const [icon, setIcon] = useState(category.icon);
   const [group, setGroup] = useState<KakeiboGroup>(category.group ?? "wants");
@@ -306,9 +322,9 @@ function CategoryDialog({
   const [error, setError] = useState("");
 
   const save = async () => {
-    if (!name.trim()) return setError("ตั้งชื่อหมวดก่อน");
+    if (!name.trim()) return setError(t("cat_errName"));
     const budget = budgetStr ? parseAmount(budgetStr) : null;
-    if (budgetStr && budget === null) return setError("งบประมาณต้องเป็นตัวเลข");
+    if (budgetStr && budget === null) return setError(t("cat_errBudget"));
     await db.categories.update(category.id!, {
       name: name.trim(),
       icon: icon.trim() || "🏷️",
@@ -320,12 +336,12 @@ function CategoryDialog({
 
   const remove = async () => {
     if (inUse) {
-      setError("หมวดนี้มีรายการใช้อยู่ ลบไม่ได้");
+      setError(t("cat_inUse"));
       return;
     }
     if (
-      await confirmDialog(`ลบหมวด "${category.name}"?`, {
-        confirmLabel: "ลบ",
+      await confirmDialog(t("cat_confirmDelete", { name: category.name }), {
+        confirmLabel: t("delete"),
         danger: true,
       })
     ) {
@@ -336,44 +352,44 @@ function CategoryDialog({
 
   return (
     <Overlay onClose={onClose}>
-      <h2 className="pb-4 font-zen text-lg font-bold">แก้ไขหมวด</h2>
+      <h2 className="pb-4 font-zen text-lg font-bold">{t("cat_edit")}</h2>
       <div className="space-y-4">
         <div className="flex gap-2">
           <input
             className={`${inputCls} w-16 text-center`}
             value={icon}
             onChange={(e) => setIcon(e.target.value)}
-            aria-label="ไอคอน"
+            aria-label={t("pk_icon")}
           />
           <input
             className={inputCls}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="ชื่อหมวด"
+            placeholder={t("cat_namePlaceholder")}
           />
         </div>
         {category.type === "expense" && (
           <div className="grid grid-cols-2 gap-3">
-            <Field label="เสา kakeibo">
+            <Field label={t("cat_pillar")}>
               <select
                 className={inputCls}
                 value={group}
                 onChange={(e) => setGroup(e.target.value as KakeiboGroup)}
               >
-                {(Object.keys(KAKEIBO_LABEL) as KakeiboGroup[]).map((g) => (
+                {KAKEIBO_GROUPS.map((g) => (
                   <option key={g} value={g}>
-                    {KAKEIBO_LABEL[g]}
+                    {t(`kakeibo_${g}`)}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="งบต่อเดือน (บาท)">
+            <Field label={t("cat_budget")}>
               <input
                 className={inputCls}
                 inputMode="decimal"
                 value={budgetStr}
                 onChange={(e) => setBudgetStr(e.target.value)}
-                placeholder="ไม่จำกัด"
+                placeholder={t("cat_unlimited")}
               />
             </Field>
           </div>
@@ -405,6 +421,7 @@ function CategoryDialog({
 }
 
 function CategoryManager() {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("🏷️");
@@ -431,7 +448,7 @@ function CategoryManager() {
         onClick={() => setOpen(true)}
         className="pressable rounded-xl bg-surface2 px-4 py-2 text-sm text-sub"
       >
-        + เพิ่มหมวดใหม่
+        {t("cat_addNew")}
       </button>
     );
   }
@@ -445,13 +462,13 @@ function CategoryManager() {
           className={`${inputCls} w-14 text-center`}
           value={icon}
           onChange={(e) => setIcon(e.target.value)}
-          aria-label="ไอคอน"
+          aria-label={t("pk_icon")}
         />
         <input
           className={`${inputCls} min-w-0 flex-1`}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="ชื่อหมวด"
+          placeholder={t("cat_namePlaceholder")}
           autoFocus
         />
       </div>
@@ -461,8 +478,8 @@ function CategoryManager() {
           value={type}
           onChange={(e) => setType(e.target.value as "income" | "expense")}
         >
-          <option value="expense">รายจ่าย</option>
-          <option value="income">รายรับ</option>
+          <option value="expense">{t("qa_expense")}</option>
+          <option value="income">{t("qa_income")}</option>
         </select>
         {type === "expense" && (
           <select
@@ -470,9 +487,9 @@ function CategoryManager() {
             value={group}
             onChange={(e) => setGroup(e.target.value as KakeiboGroup)}
           >
-            {(Object.keys(KAKEIBO_LABEL) as KakeiboGroup[]).map((g) => (
+            {KAKEIBO_GROUPS.map((g) => (
               <option key={g} value={g}>
-                {KAKEIBO_LABEL[g]}
+                {t(`kakeibo_${g}`)}
               </option>
             ))}
           </select>
@@ -488,7 +505,7 @@ function CategoryManager() {
           onClick={() => setOpen(false)}
           className="pressable px-2 text-sm text-faint"
         >
-          ยกเลิก
+          {t("cancel")}
         </button>
       </div>
     </div>

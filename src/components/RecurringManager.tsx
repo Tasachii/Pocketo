@@ -3,27 +3,26 @@ import { useMemo, useState } from "react";
 import { fmt, parseAmount } from "../core/money";
 import { nextOccurrence } from "../core/recurring";
 import type { Recurring, RecurringFreq } from "../core/types";
-import {
-  applyDueRecurring,
-  fmtThaiDate,
-  THAI_MONTHS_SHORT,
-  THAI_WEEKDAYS,
-  todayStr,
-} from "../db/data";
+import { useT } from "../i18n";
+import type { Translator } from "../i18n";
+import { applyDueRecurring, todayStr } from "../db/data";
 import { db } from "../db/db";
 import { confirmDialog } from "./Feedback";
 import { Field, inputCls, Overlay } from "./Modal";
 
-function freqLabel(r: Recurring): string {
+function freqLabel(r: Recurring, tr: Translator): string {
   const freq = r.freq ?? "monthly";
-  if (freq === "weekly") return `ทุกวัน${THAI_WEEKDAYS[r.day]}`;
+  if (freq === "weekly")
+    return tr.t("rec_everyWeekday", { w: tr.weekday(r.day) });
   if (freq === "yearly")
-    return `ทุกปี ${r.day} ${THAI_MONTHS_SHORT[(r.month ?? 1) - 1]}`;
-  return `ทุกวันที่ ${r.day}`;
+    return tr.t("rec_everyYear", { d: r.day, m: tr.shortMonth((r.month ?? 1) - 1) });
+  return tr.t("rec_everyDay", { d: r.day });
 }
 
 /** จัดการรายการประจำรายเดือน (เงินเดือน ค่าเช่า subscription ฯลฯ) */
 export function RecurringManager() {
+  const tr = useT();
+  const { t } = tr;
   const rules = useLiveQuery(() => db.recurring.toArray(), []) ?? [];
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const [editing, setEditing] = useState<Recurring | "new" | null>(null);
@@ -47,7 +46,7 @@ export function RecurringManager() {
       <ul className="space-y-1">
         {rules.map((r) => {
           const cat = r.categoryId != null ? catById.get(r.categoryId) : undefined;
-          const name = r.note || cat?.name || "รายการประจำ";
+          const name = r.note || cat?.name || t("rec_defaultName");
           return (
             <li key={r.id} className="flex items-center gap-3 py-1.5">
               <button
@@ -61,7 +60,7 @@ export function RecurringManager() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm">{name}</span>
                   <span className="block text-xs text-faint">
-                    {freqLabel(r)} · ถัดไป {fmtThaiDate(nextOccurrence(r, today))}
+                    {freqLabel(r, tr)} · {t("rec_nextSuffix", { date: tr.date(nextOccurrence(r, today)) })}
                   </span>
                 </span>
                 <span
@@ -77,7 +76,7 @@ export function RecurringManager() {
                 onClick={() => toggle(r)}
                 role="switch"
                 aria-checked={r.active === 1}
-                aria-label={`เปิด/ปิด ${name}`}
+                aria-label={t("rec_aria_toggle", { name })}
                 className="pressable relative h-6 w-10 shrink-0 rounded-full transition-colors"
                 style={{
                   background: r.active ? "var(--accent)" : "var(--surface2)",
@@ -96,7 +95,7 @@ export function RecurringManager() {
         onClick={() => setEditing("new")}
         className="pressable mt-2 rounded-xl bg-surface2 px-4 py-2 text-sm text-sub"
       >
-        + เพิ่มรายการประจำ
+        {t("rec_add")}
       </button>
 
       {editing !== null && (
@@ -121,6 +120,7 @@ function RecurringDialog({
     useLiveQuery(() => db.pockets.orderBy("sortOrder").toArray(), []) ?? [];
   const main = pockets.find((p) => p.isMain);
 
+  const { t, weekday, shortMonth } = useT();
   const [type, setType] = useState<"IN" | "OUT">(rule?.type ?? "OUT");
   const [amountStr, setAmountStr] = useState(rule ? fmt(rule.amount) : "");
   const [categoryId, setCategoryId] = useState(rule?.categoryId);
@@ -152,8 +152,8 @@ function RecurringDialog({
 
   const save = async () => {
     const amount = parseAmount(amountStr);
-    if (amount === null || amount <= 0) return setError("ใส่จำนวนเงินให้ถูกต้อง");
-    if (effectivePocketId == null) return setError("เลือกกล่อง");
+    if (amount === null || amount <= 0) return setError(t("rec_errAmount"));
+    if (effectivePocketId == null) return setError(t("rec_errPocket"));
     const fields = {
       type,
       amount,
@@ -182,9 +182,9 @@ function RecurringDialog({
   const remove = async () => {
     if (!rule) return;
     if (
-      await confirmDialog("ลบรายการประจำนี้?", {
-        detail: "รายการที่สร้างไปแล้วยังอยู่ครบ",
-        confirmLabel: "ลบ",
+      await confirmDialog(t("rec_confirmDelete"), {
+        detail: t("rec_deleteKept"),
+        confirmLabel: t("delete"),
         danger: true,
       })
     ) {
@@ -196,7 +196,7 @@ function RecurringDialog({
   return (
     <Overlay onClose={onClose}>
       <h2 className="pb-4 font-zen text-lg font-bold">
-        {rule ? "แก้ไขรายการประจำ" : "รายการประจำใหม่"}
+        {rule ? t("rec_edit") : t("rec_new")}
       </h2>
       <div className="space-y-4">
         <div className="flex rounded-2xl bg-surface2 p-1">
@@ -215,12 +215,12 @@ function RecurringDialog({
                   : { color: "var(--faint)" }
               }
             >
-              {d === "OUT" ? "รายจ่าย" : "รายรับ"}
+              {d === "OUT" ? t("qa_expense") : t("qa_income")}
             </button>
           ))}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="จำนวนเงิน (บาท)">
+          <Field label={t("amountBaht")}>
             <input
               className={inputCls}
               inputMode="decimal"
@@ -230,35 +230,35 @@ function RecurringDialog({
               autoFocus={!rule}
             />
           </Field>
-          <Field label="ความถี่">
+          <Field label={t("rec_freq")}>
             <select
               className={inputCls}
               value={freq}
               onChange={(e) => changeFreq(e.target.value as RecurringFreq)}
             >
-              <option value="monthly">รายเดือน</option>
-              <option value="weekly">รายสัปดาห์</option>
-              <option value="yearly">รายปี</option>
+              <option value="monthly">{t("freq_monthly")}</option>
+              <option value="weekly">{t("freq_weekly")}</option>
+              <option value="yearly">{t("freq_yearly")}</option>
             </select>
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {freq === "weekly" ? (
-            <Field label="ทุกวัน">
+            <Field label={t("rec_everyWeekdayField")}>
               <select
                 className={inputCls}
                 value={day}
                 onChange={(e) => setDay(Number(e.target.value))}
               >
-                {THAI_WEEKDAYS.map((w, i) => (
+                {Array.from({ length: 7 }, (_, i) => i).map((i) => (
                   <option key={i} value={i}>
-                    วัน{w}
+                    {t("rec_weekdayOpt", { w: weekday(i) })}
                   </option>
                 ))}
               </select>
             </Field>
           ) : (
-            <Field label="ทุกวันที่">
+            <Field label={t("rec_onDay")}>
               <select
                 className={inputCls}
                 value={day}
@@ -266,22 +266,22 @@ function RecurringDialog({
               >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>
-                    วันที่ {d}
+                    {t("rec_dayN", { d })}
                   </option>
                 ))}
               </select>
             </Field>
           )}
           {freq === "yearly" && (
-            <Field label="เดือน">
+            <Field label={t("rec_month")}>
               <select
                 className={inputCls}
                 value={month}
                 onChange={(e) => setMonth(Number(e.target.value))}
               >
-                {THAI_MONTHS_SHORT.map((m, i) => (
+                {Array.from({ length: 12 }, (_, i) => i).map((i) => (
                   <option key={i} value={i + 1}>
-                    {m}
+                    {shortMonth(i)}
                   </option>
                 ))}
               </select>
@@ -289,7 +289,7 @@ function RecurringDialog({
           )}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="หมวด">
+          <Field label={t("category")}>
             <select
               className={inputCls}
               value={effectiveCatId}
@@ -302,7 +302,7 @@ function RecurringDialog({
               ))}
             </select>
           </Field>
-          <Field label="กล่อง">
+          <Field label={t("pocket")}>
             <select
               className={inputCls}
               value={effectivePocketId}
@@ -316,12 +316,12 @@ function RecurringDialog({
             </select>
           </Field>
         </div>
-        <Field label="ชื่อรายการ">
+        <Field label={t("rec_name")}>
           <input
             className={inputCls}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="เช่น เงินเดือน, ค่าเช่า, Netflix"
+            placeholder={t("rec_namePlaceholder")}
           />
         </Field>
         {error && (

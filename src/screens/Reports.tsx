@@ -1,11 +1,12 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
+import { useT } from "../i18n";
 import { CHART_COLORS, Donut, type DonutSlice } from "../components/Donut";
 import { IconBack, IconShare } from "../components/Icons";
 import { fmt, fmtBaht } from "../core/money";
 import { renderShareCard } from "../core/share";
-import { KAKEIBO_LABEL, type KakeiboGroup } from "../core/types";
-import { monthKey, THAI_MONTHS, THAI_MONTHS_SHORT } from "../db/data";
+import type { KakeiboGroup } from "../core/types";
+import { monthKey } from "../db/data";
 import { db } from "../db/db";
 
 const GROUP_COLORS: Record<KakeiboGroup, string> = {
@@ -16,6 +17,7 @@ const GROUP_COLORS: Record<KakeiboGroup, string> = {
 };
 
 export function Reports() {
+  const { t, shortMonth, monthYear } = useT();
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const catById = useMemo(
     () => new Map(categories.map((c) => [c.id!, c])),
@@ -84,7 +86,7 @@ export function Reports() {
       color: CHART_COLORS[i % CHART_COLORS.length],
     }));
     if (rest > 0)
-      slices.push({ label: "ที่เหลือ", value: rest, color: "var(--faint)" });
+      slices.push({ label: t("rp_remaining"), value: rest, color: "var(--faint)" });
     return { slices, legend: slices };
   }, [spentByCat, catById]);
 
@@ -127,7 +129,7 @@ export function Reports() {
         else if (t.type === "OUT") exp += t.amount;
       }
       months.push({
-        label: THAI_MONTHS_SHORT[d.getMonth()],
+        label: shortMonth(d.getMonth()),
         income: inc,
         expense: exp,
       });
@@ -152,11 +154,22 @@ export function Reports() {
           amount,
         }));
       const blob = await renderShareCard({
-        monthLabel: `${THAI_MONTHS[ym.m]} ${ym.y + 543}`,
+        monthLabel: monthYear(ym.y, ym.m),
         income,
         expense,
         topCats,
         groups,
+        labels: {
+          balance: t("rp_share_balance"),
+          top: t("rp_share_top"),
+          pillars: t("rp_fourPillars"),
+          pillar: {
+            needs: t("kakeibo_needs"),
+            wants: t("kakeibo_wants"),
+            culture: t("kakeibo_culture"),
+            extra: t("kakeibo_extra"),
+          },
+        },
       });
       const file = new File([blob], `pocketo-${mk}.png`, {
         type: "image/png",
@@ -180,25 +193,25 @@ export function Reports() {
   return (
     <div>
       <header className="rise flex items-center justify-between pt-2">
-        <h1 className="font-zen text-xl font-bold tracking-tight">รายงาน</h1>
+        <h1 className="font-zen text-xl font-bold tracking-tight">{t("nav_reports")}</h1>
         <div className="flex items-center gap-1">
           {hasData && (
             <button
               onClick={share}
               className="pressable p-2 text-sub"
               style={{ opacity: sharing ? 0.4 : 1 }}
-              aria-label="แชร์สรุปเดือนเป็นภาพ"
+              aria-label={t("rp_aria_share")}
             >
               <IconShare size={18} />
             </button>
           )}
-          <button onClick={() => shift(-1)} className="pressable p-2 text-sub" aria-label="เดือนก่อน">
+          <button onClick={() => shift(-1)} className="pressable p-2 text-sub" aria-label={t("rp_aria_prev")}>
             <IconBack size={18} />
           </button>
           <span className="min-w-[110px] text-center text-sm font-medium">
-            {THAI_MONTHS[ym.m]} {ym.y + 543}
+            {monthYear(ym.y, ym.m)}
           </span>
-          <button onClick={() => shift(1)} className="pressable p-2 text-sub" aria-label="เดือนถัดไป">
+          <button onClick={() => shift(1)} className="pressable p-2 text-sub" aria-label={t("rp_aria_next")}>
             <IconBack size={18} className="rotate-180" />
           </button>
         </div>
@@ -206,17 +219,17 @@ export function Reports() {
 
       <section className="rise rise-1 grid grid-cols-3 gap-3 pt-6">
         {[
-          { label: "รายรับ", v: income, color: "var(--income)", sign: "+" },
-          { label: "รายจ่าย", v: expense, color: "var(--expense)", sign: "−" },
+          { key: "rp_income" as const, v: income, color: "var(--income)", sign: "+" },
+          { key: "rp_expense" as const, v: expense, color: "var(--expense)", sign: "−" },
           {
-            label: "คงเหลือ",
+            key: "rp_balance" as const,
             v: income - expense,
             color: "var(--ink)",
             sign: "",
           },
         ].map((c) => (
-          <div key={c.label} className="rounded-2xl bg-surface p-3">
-            <p className="text-xs text-sub">{c.label}</p>
+          <div key={c.key} className="rounded-2xl bg-surface p-3">
+            <p className="text-xs text-sub">{t(c.key)}</p>
             <p
               className="tabular pt-1 font-zen text-[15px] font-medium"
               style={{ color: c.color }}
@@ -230,7 +243,7 @@ export function Reports() {
       {/* งบประมาณต่อหมวด — เขียว→เหลือง→แดงตามการใช้ */}
       {budgetCats.length > 0 && (
         <section className="rise rise-2 pt-8">
-          <h2 className="pb-4 text-sm font-medium text-sub">งบประมาณเดือนนี้</h2>
+          <h2 className="pb-4 text-sm font-medium text-sub">{t("rp_monthlyBudget")}</h2>
           <div className="space-y-3">
             {budgetCats.map((c) => {
               const spent = spentByCat.get(c.id!) ?? 0;
@@ -269,14 +282,14 @@ export function Reports() {
 
       {!hasData ? (
         <p className="rise rise-2 pt-16 text-center text-sm text-sub">
-          เดือนนี้ยังไม่มีบันทึก
+          {t("rp_noRecords")}
         </p>
       ) : (
         <>
           {expense > 0 && (
             <section className="rise rise-2 pt-8">
               <h2 className="pb-4 text-sm font-medium text-sub">
-                รายจ่ายตามหมวด
+                {t("rp_spendingByCat")}
               </h2>
               <div className="flex items-center gap-6">
                 <Donut slices={slices} size={150} thickness={20} />
@@ -301,11 +314,9 @@ export function Reports() {
           {expense > 0 && (
             <section className="rise rise-3 pt-8">
               <h2 className="pb-1 text-sm font-medium text-sub">
-                สี่เสาการใช้เงิน
+                {t("rp_fourPillars")}
               </h2>
-              <p className="pb-4 text-xs text-faint">
-                แนวคิด kakeibo — รู้ว่าเงินไหลไปกับอะไร
-              </p>
+              <p className="pb-4 text-xs text-faint">{t("rp_kakeiboHint")}</p>
               <div className="space-y-3">
                 {(Object.keys(groups) as KakeiboGroup[]).map((g) => {
                   const v = groups[g];
@@ -313,7 +324,7 @@ export function Reports() {
                   return (
                     <div key={g}>
                       <div className="flex justify-between pb-1 text-sm">
-                        <span>{KAKEIBO_LABEL[g]}</span>
+                        <span>{t(`kakeibo_${g}`)}</span>
                         <span className="tabular text-sub">
                           {fmtBaht(v)} · {Math.round(pct)}%
                         </span>
@@ -336,7 +347,7 @@ export function Reports() {
 
           <section className="rise rise-4 pb-4 pt-8">
             <h2 className="pb-4 text-sm font-medium text-sub">
-              ย้อนหลัง 6 เดือน
+              {t("rp_last6")}
             </h2>
             <div className="flex items-end justify-between gap-2">
               {trend.map((m, i) => (

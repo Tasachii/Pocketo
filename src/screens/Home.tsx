@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
+import { useT } from "../i18n";
 import { EnsoRing } from "../components/EnsoRing";
 import { showToast } from "../components/Feedback";
 import {
@@ -15,7 +16,7 @@ import { downloadBackup } from "../core/backup";
 import { fmt, fmtBaht } from "../core/money";
 import { nextOccurrence } from "../core/recurring";
 import type { Tx } from "../core/types";
-import { calcBalances, fmtThaiDate, monthKey, todayStr } from "../db/data";
+import { calcBalances, monthKey, todayStr } from "../db/data";
 import { db } from "../db/db";
 import type { ThemeMode } from "../state/useTheme";
 import { History } from "./History";
@@ -30,6 +31,7 @@ export function Home({
   themeMode: ThemeMode;
   onCycleTheme: () => void;
 }) {
+  const { t, date: fmtDate } = useT();
   const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
   const pockets =
     useLiveQuery(() => db.pockets.orderBy("sortOrder").toArray(), []) ?? [];
@@ -55,10 +57,10 @@ export function Home({
   const { income, expense } = useMemo(() => {
     let income = 0;
     let expense = 0;
-    for (const t of txs) {
-      if (!t.date.startsWith(mk)) continue;
-      if (t.type === "IN") income += t.amount;
-      else if (t.type === "OUT") expense += t.amount;
+    for (const tx of txs) {
+      if (!tx.date.startsWith(mk)) continue;
+      if (tx.type === "IN") income += tx.amount;
+      else if (tx.type === "OUT") expense += tx.amount;
     }
     return { income, expense };
   }, [txs, mk]);
@@ -101,15 +103,21 @@ export function Home({
 
   const ThemeIcon =
     themeMode === "dark" ? IconMoon : themeMode === "light" ? IconSun : IconAuto;
+  const themeTitle =
+    themeMode === "dark"
+      ? t("theme_dark")
+      : themeMode === "light"
+        ? t("theme_light")
+        : t("theme_auto");
 
-  const txLabel = (t: Tx): { icon: string; name: string } => {
-    if (t.type === "TRANSFER") {
-      const to = t.toPocketId != null ? pocketById.get(t.toPocketId) : undefined;
-      return { icon: "", name: `โอนไป ${to?.name ?? "?"}` };
+  const txLabel = (tx: Tx): { icon: string; name: string } => {
+    if (tx.type === "TRANSFER") {
+      const to = tx.toPocketId != null ? pocketById.get(tx.toPocketId) : undefined;
+      return { icon: "", name: t("home_transferTo", { name: to?.name ?? "?" }) };
     }
-    if (t.type === "INIT") return { icon: "", name: "ยอดตั้งต้น" };
-    const c = t.categoryId != null ? catById.get(t.categoryId) : undefined;
-    return { icon: c?.icon ?? "", name: c?.name ?? "ไม่ระบุหมวด" };
+    if (tx.type === "INIT") return { icon: "", name: t("home_initBalance") };
+    const c = tx.categoryId != null ? catById.get(tx.categoryId) : undefined;
+    return { icon: c?.icon ?? "", name: c?.name ?? t("home_uncategorized") };
   };
 
   return (
@@ -123,10 +131,8 @@ export function Home({
         <button
           onClick={onCycleTheme}
           className="pressable p-2 text-sub"
-          aria-label="สลับธีม"
-          title={
-            themeMode === "dark" ? "มืด" : themeMode === "light" ? "สว่าง" : "ตามระบบ"
-          }
+          aria-label={t("aria_themeSwitch")}
+          title={themeTitle}
         >
           <ThemeIcon size={20} />
         </button>
@@ -134,7 +140,7 @@ export function Home({
 
       {/* ยอดรวม — ตัวเลขคือ hero */}
       <section className="rise rise-1 flex flex-col items-center pb-10 pt-12">
-        <p className="pb-2 text-sm text-sub">ยอดรวมทุกกล่อง</p>
+        <p className="pb-2 text-sm text-sub">{t("home_allPockets")}</p>
         <NumberTicker
           value={total}
           className="font-zen text-5xl font-medium tracking-tight"
@@ -147,7 +153,7 @@ export function Home({
           <span style={{ color: "var(--expense)" }} className="tabular">
             −฿{fmt(expense)}
           </span>
-          <span className="text-faint">เดือนนี้</span>
+          <span className="text-faint">{t("home_thisMonth")}</span>
         </div>
       </section>
 
@@ -185,7 +191,9 @@ export function Home({
       {/* รายการประจำที่จะถึง */}
       {upcoming.length > 0 && (
         <section className="rise rise-3 pb-7">
-          <h2 className="pb-2 text-sm font-medium text-sub">ประจำที่จะถึง</h2>
+          <h2 className="pb-2 text-sm font-medium text-sub">
+            {t("home_upcoming")}
+          </h2>
           <ul className="space-y-1">
             {upcoming.map(({ r, next }) => {
               const cat =
@@ -194,9 +202,9 @@ export function Home({
                 <li key={r.id} className="flex items-center gap-3 px-2 py-1.5">
                   <IconRepeat size={14} className="shrink-0 text-faint" />
                   <span className="min-w-0 flex-1 truncate text-sm text-sub">
-                    {r.note || cat?.name || "รายการประจำ"}
+                    {r.note || cat?.name || t("rec_defaultName")}
                   </span>
-                  <span className="text-xs text-faint">{fmtThaiDate(next)}</span>
+                  <span className="text-xs text-faint">{fmtDate(next)}</span>
                   <span
                     className="tabular text-sm"
                     style={{
@@ -219,32 +227,32 @@ export function Home({
           <div className="flex flex-col items-center gap-3 pb-10 pt-16 text-center">
             <EnsoRing progress={0.92} size={64} stroke={3} color="var(--line)" />
             <p className="text-sm text-sub">
-              ยังไม่มีบันทึก
+              {t("home_noRecordsTitle")}
               <br />
-              แตะปุ่ม + เพื่อจดรายการแรกของคุณ
+              {t("home_noRecordsBody")}
             </p>
           </div>
         ) : (
           <>
             <div className="flex items-baseline justify-between pb-3">
-              <h2 className="text-sm font-medium text-sub">ล่าสุด</h2>
+              <h2 className="text-sm font-medium text-sub">{t("home_latest")}</h2>
               <button
                 onClick={() => setHistoryOpen(true)}
                 className="pressable text-xs"
                 style={{ color: "var(--accent)" }}
               >
-                ทั้งหมด →
+                {t("viewAll")}
               </button>
             </div>
             <ul className="space-y-1">
-              {recent.map((t) => {
-                const { icon, name } = txLabel(t);
-                const isIn = t.type === "IN" || t.type === "INIT";
-                const isTransfer = t.type === "TRANSFER";
+              {recent.map((tx) => {
+                const { icon, name } = txLabel(tx);
+                const isIn = tx.type === "IN" || tx.type === "INIT";
+                const isTransfer = tx.type === "TRANSFER";
                 return (
-                  <li key={t.id}>
+                  <li key={tx.id}>
                     <button
-                      onClick={() => setEditingTx(t)}
+                      onClick={() => setEditingTx(tx)}
                       className="pressable flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface2 text-lg">
@@ -259,8 +267,8 @@ export function Home({
                           {name}
                         </span>
                         <span className="block text-xs text-faint">
-                          {fmtThaiDate(t.date)}
-                          {t.note ? ` · ${t.note}` : ""}
+                          {fmtDate(tx.date)}
+                          {tx.note ? ` · ${tx.note}` : ""}
                         </span>
                       </span>
                       <span
@@ -273,7 +281,7 @@ export function Home({
                               : "var(--expense)",
                         }}
                       >
-                        {isTransfer ? "" : isIn ? "+" : "−"}฿{fmt(t.amount)}
+                        {isTransfer ? "" : isIn ? "+" : "−"}฿{fmt(tx.amount)}
                       </span>
                     </button>
                   </li>
@@ -293,20 +301,18 @@ export function Home({
             border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
           }}
         >
-          <p className="text-sm font-medium">ยังไม่ได้สำรองข้อมูลนานแล้ว</p>
-          <p className="pt-1 text-xs text-sub">
-            ข้อมูลอยู่ในเครื่องนี้เท่านั้น — ส่งออกไฟล์เก็บไว้กันหาย
-          </p>
+          <p className="text-sm font-medium">{t("home_backupTitle")}</p>
+          <p className="pt-1 text-xs text-sub">{t("home_backupBody")}</p>
           <div className="flex gap-2 pt-3">
             <button
               onClick={async () => {
                 await downloadBackup(db);
-                showToast("ส่งออกไฟล์ backup แล้ว");
+                showToast(t("set_exported"));
               }}
               className="pressable rounded-xl px-4 py-2 text-sm font-semibold text-white"
               style={{ background: "var(--accent)" }}
             >
-              สำรองตอนนี้
+              {t("home_backupNow")}
             </button>
             <button
               onClick={() =>
@@ -314,7 +320,7 @@ export function Home({
               }
               className="pressable rounded-xl px-4 py-2 text-sm text-sub"
             >
-              ภายหลัง
+              {t("home_later")}
             </button>
           </div>
         </section>

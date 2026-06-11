@@ -1,36 +1,51 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "../i18n";
+import type { Dict } from "../i18n";
 import { fmt } from "../core/money";
 import {
   calcThaiTax,
   savingIfDeductMore,
   TAX_YEAR_2568,
   type Deductions,
+  type TaxNote,
 } from "../core/tax";
 import { db } from "../db/db";
 
 interface FieldDef {
   key: keyof Deductions | "income" | "wht";
-  label: string;
-  hint?: string;
+  labelKey: keyof Dict;
+  hintKey?: keyof Dict;
 }
 
 const MAIN_FIELDS: FieldDef[] = [
-  { key: "income", label: "เงินได้ทั้งปี (เงินเดือน/ค่าจ้าง)" },
-  { key: "wht", label: "ภาษีหัก ณ ที่จ่ายทั้งปี" },
+  { key: "income", labelKey: "tax_income" },
+  { key: "wht", labelKey: "tax_wht" },
 ];
 
 const DEDUCTION_FIELDS: FieldDef[] = [
-  { key: "socialSecurity", label: "ประกันสังคม", hint: "สูงสุด 9,000" },
-  { key: "lifeInsurance", label: "เบี้ยประกันชีวิต", hint: "สูงสุด 100,000" },
-  { key: "healthInsurance", label: "เบี้ยประกันสุขภาพ", hint: "สูงสุด 25,000" },
-  { key: "pvd", label: "กองทุนสำรองเลี้ยงชีพ (PVD)", hint: "สูงสุด 15% ของเงินได้" },
-  { key: "ssf", label: "SSF", hint: "30% ของเงินได้ สูงสุด 200,000" },
-  { key: "rmf", label: "RMF", hint: "30% ของเงินได้ สูงสุด 500,000" },
-  { key: "tesg", label: "Thai ESG", hint: "30% ของเงินได้ สูงสุด 300,000" },
-  { key: "homeLoan", label: "ดอกเบี้ยบ้าน", hint: "สูงสุด 100,000" },
-  { key: "donation", label: "เงินบริจาค", hint: "สูงสุด 10% ของเงินได้หลังหักลดหย่อน" },
+  { key: "socialSecurity", labelKey: "tax_f_ss", hintKey: "tax_h_ss" },
+  { key: "lifeInsurance", labelKey: "tax_f_life", hintKey: "tax_h_life" },
+  { key: "healthInsurance", labelKey: "tax_f_health", hintKey: "tax_h_health" },
+  { key: "pvd", labelKey: "tax_f_pvd", hintKey: "tax_h_pvd" },
+  { key: "ssf", labelKey: "tax_f_ssf", hintKey: "tax_h_ssf" },
+  { key: "rmf", labelKey: "tax_f_rmf", hintKey: "tax_h_rmf" },
+  { key: "tesg", labelKey: "tax_f_tesg", hintKey: "tax_h_tesg" },
+  { key: "homeLoan", labelKey: "tax_f_home", hintKey: "tax_h_home" },
+  { key: "donation", labelKey: "tax_f_donation", hintKey: "tax_h_donation" },
 ];
+
+const FIELD_LABEL: Record<string, keyof Dict> = {
+  ss: "tax_f_ss",
+  life: "tax_f_life",
+  health: "tax_f_health",
+  ssf: "tax_f_ssf",
+  rmf: "tax_f_rmf",
+  pvd: "tax_f_pvd",
+  tesg: "tax_f_tesg",
+  home: "tax_f_home",
+  donation: "tax_cap_donation",
+};
 
 const toNum = (s: string | undefined): number => {
   if (!s) return 0;
@@ -39,6 +54,7 @@ const toNum = (s: string | undefined): number => {
 };
 
 export function Tax() {
+  const { t, year: toYear } = useT();
   const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
 
   const years = useMemo(() => {
@@ -101,19 +117,26 @@ export function Tax() {
 
   const fb = (n: number) => `฿${fmt(Math.round(n * 100))}`;
 
+  const noteText = (n: TaxNote): string => {
+    const max = n.max.toLocaleString();
+    if (n.code === "lifeHealth") return t("tax_cap_lifeHealth", { max });
+    if (n.code === "retire") return t("tax_cap_retire", { max });
+    return t("tax_cap", { label: t(FIELD_LABEL[n.field] ?? "tax_f_ss"), max });
+  };
+
   return (
     <div>
       <header className="rise flex items-center justify-between pt-2">
-        <h1 className="font-zen text-xl font-bold tracking-tight">ภาษี</h1>
+        <h1 className="font-zen text-xl font-bold tracking-tight">{t("nav_tax")}</h1>
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          aria-label="เลือกปีภาษี"
+          aria-label={t("tax_aria_year")}
           className="rounded-xl border border-line bg-surface px-3 py-1.5 text-sm"
         >
           {years.map((y) => (
             <option key={y} value={y}>
-              ปีภาษี {y + 543}
+              {t("tax_year", { year: toYear(y) })}
             </option>
           ))}
         </select>
@@ -122,7 +145,7 @@ export function Tax() {
       <section className="rise rise-1 space-y-3 pt-6">
         {MAIN_FIELDS.map((f) => (
           <label key={f.key} className="block">
-            <span className="text-xs text-sub">{f.label}</span>
+            <span className="text-xs text-sub">{t(f.labelKey)}</span>
             <input
               className={inputCls + " mt-1"}
               inputMode="decimal"
@@ -136,22 +159,22 @@ export function Tax() {
           onClick={pullIncome}
           className="pressable rounded-xl bg-surface2 px-4 py-2 text-sm text-sub"
         >
-          ดึงรายรับปี {year + 543} จากบันทึก
+          {t("tax_pull", { year: toYear(year) })}
         </button>
       </section>
 
       <section className="rise rise-2 pt-7">
-        <h2 className="pb-3 text-sm font-medium text-sub">ค่าลดหย่อน</h2>
+        <h2 className="pb-3 text-sm font-medium text-sub">{t("tax_deductions")}</h2>
         <div className="grid grid-cols-2 gap-3">
           {DEDUCTION_FIELDS.map((f) => (
             <label key={f.key} className="block">
-              <span className="text-xs text-sub">{f.label}</span>
+              <span className="text-xs text-sub">{t(f.labelKey)}</span>
               <input
                 className={inputCls + " mt-1"}
                 inputMode="decimal"
                 value={form[f.key] ?? ""}
                 onChange={(e) => set(f.key, e.target.value)}
-                placeholder={f.hint ?? "0"}
+                placeholder={f.hintKey ? t(f.hintKey) : "0"}
               />
             </label>
           ))}
@@ -162,12 +185,12 @@ export function Tax() {
         <section className="rise rise-3 pt-7">
           <div className="rounded-3xl bg-surface p-5">
             <div className="space-y-1.5 text-sm">
-              <Row label="หักค่าใช้จ่าย (50% ไม่เกิน 100,000)" value={`−${fb(result.expenseDeduction)}`} />
-              <Row label={`ลดหย่อนรวม (รวมส่วนตัว ${fmt(TAX_YEAR_2568.personalAllowance * 100)})`} value={`−${fb(result.allowanceTotal)}`} />
+              <Row label={t("tax_expenseDeduction")} value={`−${fb(result.expenseDeduction)}`} />
+              <Row label={t("tax_allowanceTotal", { personal: fmt(TAX_YEAR_2568.personalAllowance * 100) })} value={`−${fb(result.allowanceTotal)}`} />
               {result.donationApplied > 0 && (
-                <Row label="เงินบริจาค" value={`−${fb(result.donationApplied)}`} />
+                <Row label={t("tax_donationLine")} value={`−${fb(result.donationApplied)}`} />
               )}
-              <Row label="เงินได้สุทธิ" value={fb(result.taxableIncome)} strong />
+              <Row label={t("tax_netIncome")} value={fb(result.taxableIncome)} strong />
             </div>
 
             {result.taxableIncome > 0 && (
@@ -181,9 +204,9 @@ export function Tax() {
                     >
                       <span>
                         {b.rate === 0
-                          ? `0 – 150,000 · ยกเว้น`
+                          ? `0 – 150,000 · ${t("tax_exempt")}`
                           : `${(b.min + 1).toLocaleString()} – ${
-                              b.max === Infinity ? "ขึ้นไป" : b.max.toLocaleString()
+                              b.max === Infinity ? t("tax_andUp") : b.max.toLocaleString()
                             } · ${Math.round(b.rate * 100)}%`}
                       </span>
                       <span className="tabular">{fb(b.tax)}</span>
@@ -195,7 +218,7 @@ export function Tax() {
             <div className="mt-4 border-t border-line pt-4 text-center">
               {result.taxRefund > 0 ? (
                 <>
-                  <p className="text-sm text-sub">ได้เงินคืนภาษีประมาณ</p>
+                  <p className="text-sm text-sub">{t("tax_refund")}</p>
                   <p
                     className="tabular pt-1 font-zen text-3xl font-medium"
                     style={{ color: "var(--income)" }}
@@ -206,7 +229,7 @@ export function Tax() {
               ) : (
                 <>
                   <p className="text-sm text-sub">
-                    ภาษีที่ต้อง{toNum(form.wht) > 0 ? "จ่ายเพิ่ม" : "จ่าย"}ประมาณ
+                    {toNum(form.wht) > 0 ? t("tax_payMore") : t("tax_pay")}
                   </p>
                   <p className="tabular pt-1 font-zen text-3xl font-medium">
                     {fb(result.finalTax)}
@@ -214,8 +237,10 @@ export function Tax() {
                 </>
               )}
               <p className="pt-1 text-xs text-faint">
-                ภาษีทั้งปี {fb(result.totalTax)} · อัตราที่จ่ายจริง{" "}
-                {(result.effectiveRate * 100).toFixed(1)}%
+                {t("tax_totalLine", {
+                  total: fb(result.totalTax),
+                  rate: (result.effectiveRate * 100).toFixed(1),
+                })}
               </p>
             </div>
           </div>
@@ -223,7 +248,7 @@ export function Tax() {
           {result.notes.length > 0 && (
             <ul className="space-y-1 pt-3 text-xs" style={{ color: "var(--warn)" }}>
               {result.notes.map((n, i) => (
-                <li key={i}>• {n}</li>
+                <li key={i}>• {noteText(n)}</li>
               ))}
             </ul>
           )}
@@ -231,7 +256,7 @@ export function Tax() {
           {result.taxableIncome > 150_000 && (
             <div className="pt-5">
               <h3 className="pb-2 text-sm font-medium text-sub">
-                ซื้อกองทุนลดหย่อนเพิ่ม ประหยัดได้อีก
+                {t("tax_buyMore")}
               </h3>
               <div className="flex gap-2">
                 {[10_000, 50_000, 100_000].map((x) => (
@@ -253,9 +278,7 @@ export function Tax() {
           )}
 
           <p className="px-1 pb-4 pt-5 text-xs leading-relaxed text-faint">
-            การประมาณการเบื้องต้นสำหรับเงินได้ประเภทเงินเดือน (40(1))
-            ตามอัตราปีภาษี 2568 — ตัวเลขจริงขึ้นกับเงื่อนไขส่วนบุคคล
-            โปรดตรวจสอบกับกรมสรรพากรอีกครั้งก่อนยื่น
+            {t("tax_disclaimer")}
           </p>
         </section>
       )}

@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { EnsoRing } from "../components/EnsoRing";
 import { IconPlus, IconSwap } from "../components/Icons";
+import { useT } from "../i18n";
 import { confirmDialog } from "../components/Feedback";
 import { Field, inputCls, Overlay } from "../components/Modal";
 import { fmt, fmtBaht, parseAmount } from "../core/money";
@@ -12,6 +13,7 @@ import { db } from "../db/db";
 const POCKET_ICONS = ["💰", "🏦", "📈", "✈️", "🎓", "🏠", "🚗", "💍", "🎮", "🧧", "🌱", "🛡️"];
 
 export function Pockets() {
+  const { t } = useT();
   const pockets =
     useLiveQuery(() => db.pockets.orderBy("sortOrder").toArray(), []) ?? [];
   const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
@@ -25,13 +27,13 @@ export function Pockets() {
   return (
     <div>
       <header className="rise flex items-center justify-between pt-2">
-        <h1 className="font-zen text-xl font-bold tracking-tight">กล่องเงิน</h1>
+        <h1 className="font-zen text-xl font-bold tracking-tight">{t("nav_pockets")}</h1>
         <div className="flex gap-1">
           {pockets.length > 1 && (
             <button
               onClick={() => setTransferOpen(true)}
               className="pressable p-2 text-sub"
-              aria-label="โอนระหว่างกล่อง"
+              aria-label={t("pk_aria_transfer")}
             >
               <IconSwap size={20} />
             </button>
@@ -39,7 +41,7 @@ export function Pockets() {
           <button
             onClick={() => setEditing("new")}
             className="pressable p-2 text-sub"
-            aria-label="เพิ่มกล่อง"
+            aria-label={t("pk_aria_add")}
           >
             <IconPlus size={20} />
           </button>
@@ -48,8 +50,7 @@ export function Pockets() {
 
       {allocTotal > 0 && (
         <p className="rise rise-1 pt-3 text-xs text-sub">
-          รายรับเข้ากล่องหลักจะถูกแบ่งอัตโนมัติ {allocTotal}% · เหลือ{" "}
-          {100 - allocTotal}% อยู่กล่องหลัก
+          {t("pk_autoSplitNote", { pct: allocTotal, rest: 100 - allocTotal })}
         </p>
       )}
 
@@ -76,7 +77,7 @@ export function Pockets() {
                   <p className="truncate font-medium">{p.name}</p>
                   {p.isMain === 1 && (
                     <span className="rounded-full bg-surface2 px-2 py-0.5 text-[10px] text-sub">
-                      กล่องหลัก
+                      {t("pk_main")}
                     </span>
                   )}
                   {(p.allocPercent ?? 0) > 0 && (
@@ -88,7 +89,7 @@ export function Pockets() {
                           "color-mix(in srgb, var(--accent) 10%, transparent)",
                       }}
                     >
-                      อัตโนมัติ {p.allocPercent}%
+                      {t("pk_auto", { pct: p.allocPercent ?? 0 })}
                     </span>
                   )}
                 </div>
@@ -97,8 +98,10 @@ export function Pockets() {
                 </p>
                 {p.goal != null && p.goal > 0 && (
                   <p className="text-xs text-faint">
-                    เป้า {fmtBaht(p.goal)} ·{" "}
-                    {Math.min(100, Math.round((bal / p.goal) * 100))}%
+                    {t("pk_goalLine", {
+                      amount: fmtBaht(p.goal),
+                      pct: Math.min(100, Math.round((bal / p.goal) * 100)),
+                    })}
                   </p>
                 )}
               </div>
@@ -139,6 +142,7 @@ function PocketDialog({
   txCount: (id: number) => number;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const [name, setName] = useState(pocket?.name ?? "");
   const [icon, setIcon] = useState(pocket?.icon ?? POCKET_ICONS[0]);
   const [goalStr, setGoalStr] = useState(
@@ -154,18 +158,18 @@ function PocketDialog({
 
   const save = async () => {
     const trimmed = name.trim();
-    if (!trimmed) return setError("ตั้งชื่อกล่องก่อน");
+    if (!trimmed) return setError(t("pk_errName"));
     const goal = goalStr ? parseAmount(goalStr) : null;
-    if (goalStr && goal === null) return setError("เป้าหมายต้องเป็นตัวเลข");
+    if (goalStr && goal === null) return setError(t("pk_errGoal"));
     const alloc = allocStr ? Number(allocStr) : 0;
     if (!Number.isFinite(alloc) || alloc < 0 || alloc > 100)
-      return setError("เปอร์เซ็นต์ต้องอยู่ระหว่าง 0–100");
+      return setError(t("pk_errPct"));
     const otherAlloc = pockets
       .filter((p) => p.id !== pocket?.id)
       .reduce((s, p) => s + (p.allocPercent ?? 0), 0);
     if (otherAlloc + alloc > 100)
       return setError(
-        `แบ่งอัตโนมัติรวมทุกกล่องเกิน 100% (ตอนนี้กล่องอื่นรวม ${otherAlloc}%)`,
+        t("pk_errPctTotal", { other: otherAlloc }),
       );
 
     const fields = {
@@ -188,7 +192,6 @@ function PocketDialog({
           type: "INIT",
           amount: init,
           pocketId: id as number,
-          note: "ยอดตั้งต้น",
           date: todayStr(),
           createdAt: Date.now(),
         });
@@ -200,12 +203,12 @@ function PocketDialog({
   const remove = async () => {
     if (!pocket || isMain) return;
     if (txCount(pocket.id!) > 0) {
-      setError("กล่องนี้มีรายการอยู่ ลบไม่ได้ — โอนเงินออกและลบรายการก่อน");
+      setError(t("pk_errHasTx"));
       return;
     }
     if (
-      await confirmDialog(`ลบกล่อง "${pocket.name}"?`, {
-        confirmLabel: "ลบ",
+      await confirmDialog(t("pk_confirmDelete", { name: pocket.name }), {
+        confirmLabel: t("delete"),
         danger: true,
       })
     ) {
@@ -217,18 +220,18 @@ function PocketDialog({
   return (
     <Overlay onClose={onClose}>
       <h2 className="pb-4 font-zen text-lg font-bold">
-        {pocket ? "แก้ไขกล่อง" : "กล่องใหม่"}
+        {pocket ? t("pk_edit") : t("pk_new")}
       </h2>
       <div className="space-y-4">
-        <Field label="ชื่อกล่อง">
+        <Field label={t("pk_name")}>
           <input
             className={inputCls}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="เช่น ออมฉุกเฉิน"
+            placeholder={t("pk_namePlaceholder")}
           />
         </Field>
-        <Field label="ไอคอน">
+        <Field label={t("pk_icon")}>
           <div className="flex flex-wrap gap-1.5">
             {POCKET_ICONS.map((ic) => (
               <button
@@ -251,17 +254,17 @@ function PocketDialog({
           </div>
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="เป้าหมายออม (บาท)">
+          <Field label={t("pk_goalBaht")}>
             <input
               className={inputCls}
               inputMode="decimal"
               value={goalStr}
               onChange={(e) => setGoalStr(e.target.value)}
-              placeholder="ไม่บังคับ"
+              placeholder={t("optional")}
             />
           </Field>
           {!isMain && (
-            <Field label="แบ่งจากรายรับ (%)">
+            <Field label={t("pk_splitPct")}>
               <input
                 className={inputCls}
                 inputMode="numeric"
@@ -273,13 +276,13 @@ function PocketDialog({
           )}
         </div>
         {!pocket && (
-          <Field label="ยอดตั้งต้น (บาท)">
+          <Field label={t("pk_initBaht")}>
             <input
               className={inputCls}
               inputMode="decimal"
               value={initStr}
               onChange={(e) => setInitStr(e.target.value)}
-              placeholder="ไม่บังคับ"
+              placeholder={t("optional")}
             />
           </Field>
         )}
@@ -295,7 +298,7 @@ function PocketDialog({
               className="pressable rounded-2xl px-4 py-3 text-sm"
               style={{ color: "var(--expense)" }}
             >
-              ลบ
+              {t("delete")}
             </button>
           )}
           <button
@@ -303,7 +306,7 @@ function PocketDialog({
             className="pressable flex-1 rounded-2xl py-3 font-semibold text-white"
             style={{ background: "var(--accent)" }}
           >
-            บันทึก
+            {t("save")}
           </button>
         </div>
       </div>
@@ -320,6 +323,7 @@ function TransferDialog({
   balances: Map<number, number>;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const [fromId, setFromId] = useState(pockets[0]?.id);
   const [toId, setToId] = useState(pockets[1]?.id);
   const [amountStr, setAmountStr] = useState("");
@@ -328,10 +332,10 @@ function TransferDialog({
   const submit = async () => {
     const amount = parseAmount(amountStr);
     if (fromId == null || toId == null) return;
-    if (fromId === toId) return setError("ต้นทางและปลายทางต้องต่างกัน");
-    if (amount === null || amount <= 0) return setError("ใส่จำนวนเงินให้ถูกต้อง");
+    if (fromId === toId) return setError(t("tf_errDiffer"));
+    if (amount === null || amount <= 0) return setError(t("tf_errAmount"));
     if (amount > (balances.get(fromId) ?? 0))
-      return setError("ยอดในกล่องต้นทางไม่พอ");
+      return setError(t("tf_errInsufficient"));
     await transfer(fromId, toId, amount, todayStr());
     onClose();
   };
@@ -340,10 +344,10 @@ function TransferDialog({
 
   return (
     <Overlay onClose={onClose}>
-      <h2 className="pb-4 font-zen text-lg font-bold">โอนระหว่างกล่อง</h2>
+      <h2 className="pb-4 font-zen text-lg font-bold">{t("tf_title")}</h2>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="จาก">
+          <Field label={t("from")}>
             <select
               className={selectCls}
               value={fromId}
@@ -356,7 +360,7 @@ function TransferDialog({
               ))}
             </select>
           </Field>
-          <Field label="ไป">
+          <Field label={t("to")}>
             <select
               className={selectCls}
               value={toId}
@@ -370,7 +374,7 @@ function TransferDialog({
             </select>
           </Field>
         </div>
-        <Field label="จำนวนเงิน (บาท)">
+        <Field label={t("amountBaht")}>
           <input
             className={inputCls}
             inputMode="decimal"
@@ -390,7 +394,7 @@ function TransferDialog({
           className="pressable w-full rounded-2xl py-3 font-semibold text-white"
           style={{ background: "var(--accent)" }}
         >
-          โอน
+          {t("tf_action")}
         </button>
       </div>
     </Overlay>

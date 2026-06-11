@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
+import { useT } from "../i18n";
 
 /**
  * confirm / prompt dialog + undo toast แบบ global — แทน window.confirm/prompt ของระบบ
@@ -80,6 +81,7 @@ export function showToast(message: string, undo?: () => void): void {
 
 export function Feedback() {
   useSyncExternalStore(subscribe, () => version);
+  const { t } = useT();
   const [promptValue, setPromptValue] = useState("");
 
   const close = (ok: boolean) => {
@@ -123,7 +125,7 @@ export function Feedback() {
                 onClick={() => close(false)}
                 className="pressable flex-1 rounded-2xl bg-surface2 py-2.5 text-sm font-medium"
               >
-                ยกเลิก
+                {t("cancel")}
               </button>
               <button
                 onClick={() => close(true)}
@@ -134,7 +136,7 @@ export function Feedback() {
                     : "var(--accent)",
                 }}
               >
-                {confirmReq.confirmLabel ?? "ตกลง"}
+                {confirmReq.confirmLabel ?? t("ok")}
               </button>
             </div>
           </div>
@@ -172,14 +174,14 @@ export function Feedback() {
                 onClick={() => closePrompt(null)}
                 className="pressable flex-1 rounded-2xl bg-surface2 py-2.5 text-sm font-medium"
               >
-                ยกเลิก
+                {t("cancel")}
               </button>
               <button
                 type="submit"
                 className="pressable flex-1 rounded-2xl py-2.5 text-sm font-semibold text-white"
                 style={{ background: "var(--accent)" }}
               >
-                {promptReq.confirmLabel ?? "ตกลง"}
+                {promptReq.confirmLabel ?? t("ok")}
               </button>
             </div>
           </form>
@@ -191,20 +193,20 @@ export function Feedback() {
           className="pointer-events-none fixed inset-x-0 z-[75] flex flex-col items-center gap-2 px-5"
           style={{ bottom: "calc(84px + env(safe-area-inset-bottom))" }}
         >
-          {toasts.map((t) => (
+          {toasts.map((toast) => (
             <div
-              key={t.id}
+              key={toast.id}
               className="fade pointer-events-auto flex items-center gap-3 rounded-full bg-surface py-2.5 pl-4 pr-2 text-sm shadow-lg"
               style={{ border: "1px solid var(--line)" }}
             >
-              <span>{t.message}</span>
-              {t.undo ? (
+              <span>{toast.message}</span>
+              {toast.undo ? (
                 <button
-                  onClick={() => dismissToast(t, true)}
+                  onClick={() => dismissToast(toast, true)}
                   className="pressable rounded-full px-3 py-1 font-semibold"
                   style={{ color: "var(--accent)" }}
                 >
-                  เลิกทำ
+                  {t("undo")}
                 </button>
               ) : (
                 <span className="w-2" />
