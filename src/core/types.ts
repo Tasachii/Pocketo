@@ -14,6 +14,8 @@ export interface Tx {
   note?: string;
   /** ISO date: YYYY-MM-DD */
   date: string;
+  /** รายการแม่ — TRANSFER ที่เกิดจากการแบ่งรายรับอัตโนมัติชี้กลับไปที่รายรับต้นทาง */
+  parentId?: number;
   createdAt: number;
 }
 
@@ -44,6 +46,8 @@ export interface Category {
   sortOrder: number;
 }
 
+export type RecurringFreq = "monthly" | "weekly" | "yearly";
+
 export interface Recurring {
   id?: number;
   type: "IN" | "OUT";
@@ -51,8 +55,15 @@ export interface Recurring {
   pocketId: number;
   categoryId?: number;
   note?: string;
-  /** วันที่ของเดือน 1–31 — เดือนสั้นจะเลื่อนเป็นวันสุดท้ายของเดือน */
+  /** ความถี่ — รายการเก่าที่ไม่มี field นี้ = monthly */
+  freq?: RecurringFreq;
+  /**
+   * monthly/yearly: วันที่ของเดือน 1–31 (เดือนสั้นเลื่อนเป็นวันสุดท้าย)
+   * weekly: วันของสัปดาห์ 0–6 (0 = อาทิตย์)
+   */
   day: number;
+  /** เดือน 1–12 — เฉพาะ yearly */
+  month?: number;
   /** วันที่สร้างกฎ — ไม่สร้างรายการย้อนหลังก่อนวันนี้ */
   since: string;
   /** วันล่าสุดที่สร้างรายการไปแล้ว — กันสร้างซ้ำ */

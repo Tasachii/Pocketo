@@ -30,6 +30,20 @@ export async function exportData(db: PocketoDB): Promise<BackupFile> {
   };
 }
 
+/** ดาวน์โหลดไฟล์ backup และจดเวลาส่งออกล่าสุด (ใช้โดยปุ่มตั้งค่าและ banner เตือน) */
+export async function downloadBackup(db: PocketoDB): Promise<void> {
+  const data = await exportData(db);
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `pocketo-backup-${new Date().toLocaleDateString("en-CA")}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  await db.kv.put({ key: "lastExport", value: Date.now() });
+}
+
 export function validateBackup(data: unknown): data is BackupFile {
   if (typeof data !== "object" || data === null) return false;
   const d = data as Record<string, unknown>;

@@ -77,6 +77,81 @@ describe("dueDates", () => {
   });
 });
 
+describe("dueDates — weekly", () => {
+  // 2026-06-11 คือวันพฤหัส (4)
+  it("ตามเก็บทุกสัปดาห์ของวันที่กำหนด", () => {
+    expect(
+      dueDates({ freq: "weekly", day: 1, since: "2026-06-01" }, "2026-06-16"),
+    ).toEqual(["2026-06-01", "2026-06-08", "2026-06-15"]); // วันจันทร์
+  });
+
+  it("lastPosted เป็น exclusive", () => {
+    expect(
+      dueDates(
+        { freq: "weekly", day: 1, since: "2026-06-01", lastPosted: "2026-06-08" },
+        "2026-06-16",
+      ),
+    ).toEqual(["2026-06-15"]);
+  });
+
+  it("since ไม่ตรงวันกำหนด → เริ่มวันกำหนดแรกถัดไป", () => {
+    expect(
+      dueDates({ freq: "weekly", day: 0, since: "2026-06-11" }, "2026-06-20"),
+    ).toEqual(["2026-06-14"]); // อาทิตย์แรกหลัง since
+  });
+});
+
+describe("dueDates — yearly", () => {
+  it("ปีละครั้ง ตามเก็บข้ามหลายปี", () => {
+    expect(
+      dueDates(
+        { freq: "yearly", day: 15, month: 3, since: "2024-01-01", lastPosted: "2024-03-15" },
+        "2026-06-11",
+      ),
+    ).toEqual(["2025-03-15", "2026-03-15"]);
+  });
+
+  it("วันที่ 29 ก.พ. ปีไม่อธิกสุรทิน เลื่อนเป็น 28", () => {
+    expect(
+      dueDates({ freq: "yearly", day: 29, month: 2, since: "2026-01-01" }, "2026-12-31"),
+    ).toEqual(["2026-02-28"]);
+  });
+
+  it("ยังไม่ถึงวันกำหนดของปีนี้ → ว่าง", () => {
+    expect(
+      dueDates({ freq: "yearly", day: 25, month: 12, since: "2026-01-01" }, "2026-06-11"),
+    ).toEqual([]);
+  });
+});
+
+describe("legacy: กฎเก่าไม่มี freq = monthly", () => {
+  it("ทำงานเหมือน monthly เดิม", () => {
+    expect(dueDates({ day: 15, since: "2026-06-10" }, "2026-06-15")).toEqual([
+      "2026-06-15",
+    ]);
+  });
+});
+
+describe("nextOccurrence — weekly/yearly", () => {
+  it("weekly: วันกำหนดถัดไปหลังวันนี้เสมอ", () => {
+    // 2026-06-11 = พฤหัส(4) → พฤหัสถัดไปคือ 18
+    expect(
+      nextOccurrence({ freq: "weekly", day: 4, since: "2026-01-01" }, "2026-06-11"),
+    ).toBe("2026-06-18");
+    expect(
+      nextOccurrence({ freq: "weekly", day: 5, since: "2026-01-01" }, "2026-06-11"),
+    ).toBe("2026-06-12");
+  });
+  it("yearly: ปีนี้ถ้ายังไม่ถึง ไม่งั้นปีหน้า", () => {
+    expect(
+      nextOccurrence({ freq: "yearly", day: 25, month: 12, since: "2026-01-01" }, "2026-06-11"),
+    ).toBe("2026-12-25");
+    expect(
+      nextOccurrence({ freq: "yearly", day: 1, month: 3, since: "2026-01-01" }, "2026-06-11"),
+    ).toBe("2027-03-01");
+  });
+});
+
 describe("nextOccurrence", () => {
   it("วันกำหนดยังไม่ถึงในเดือนนี้", () => {
     expect(nextOccurrence({ day: 25, since: "2026-01-01" }, "2026-06-11")).toBe(

@@ -7,6 +7,9 @@ export const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
+export const THAI_WEEKDAYS = [
+  "อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์",
+];
 export const THAI_MONTHS_SHORT = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
   "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
@@ -60,25 +63,92 @@ export interface QuickTxInput {
 export async function saveQuickTx(input: QuickTxInput): Promise<void> {
   await db.transaction("rw", [db.tx, db.pockets], async () => {
     const createdAt = Date.now();
-    await db.tx.add({ ...input, createdAt });
+    const id = (await db.tx.add({ ...input, createdAt })) as number;
     if (input.type !== "IN") return;
-    const pockets = await db.pockets.toArray();
-    const main = pockets.find((p) => p.isMain);
-    if (!main || input.pocketId !== main.id) return;
-    const rules = pockets
-      .filter((p) => !p.isMain && (p.allocPercent ?? 0) > 0)
-      .map((p) => ({ pocketId: p.id!, percent: p.allocPercent! }));
-    const allocs = splitByPercent(input.amount, rules);
-    for (const a of allocs) {
-      await db.tx.add({
-        type: "TRANSFER",
-        amount: a.amount,
-        pocketId: main.id!,
-        toPocketId: a.pocketId,
-        note: "แบ่งอัตโนมัติ",
-        date: input.date,
-        createdAt,
-      });
+    await createAutoAllocations(id, input.amount, input.pocketId, input.date);
+  });
+}
+
+/** สร้าง TRANSFER แบ่งอัตโนมัติ (ผูก parentId กลับไปที่รายรับ เพื่อลบ/แก้เป็นชุดได้) */
+async function createAutoAllocations(
+  parentId: number,
+  amount: Satang,
+  pocketId: number,
+  date: string,
+): Promise<void> {
+  const pockets = await db.pockets.toArray();
+  const main = pockets.find((p) => p.isMain);
+  if (!main || pocketId !== main.id) return;
+  const rules = pockets
+    .filter((p) => !p.isMain && (p.allocPercent ?? 0) > 0)
+    .map((p) => ({ pocketId: p.id!, percent: p.allocPercent! }));
+  const createdAt = Date.now();
+  for (const a of splitByPercent(amount, rules)) {
+    await db.tx.add({
+      type: "TRANSFER",
+      amount: a.amount,
+      pocketId: main.id!,
+      toPocketId: a.pocketId,
+      note: "แบ่งอัตโนมัติ",
+      date,
+      parentId,
+      createdAt,
+    });
+  }
+}
+
+/**
+ * ลบรายการพร้อมรายการแบ่งอัตโนมัติที่เกิดจากมัน (atomic)
+ * คืนแถวที่ถูกลบทั้งหมดไว้สำหรับ "เลิกทำ"
+ */
+export async function deleteTxCascade(id: number): Promise<Tx[]> {
+  return db.transaction("rw", [db.tx], async () => {
+    const t = await db.tx.get(id);
+    if (!t) return [];
+    const children =
+      t.type === "IN"
+        ? await db.tx.filter((x) => x.parentId === id).toArray()
+        : [];
+    const all = [t, ...children];
+    await db.tx.bulkDelete(all.map((x) => x.id!));
+    return all;
+  });
+}
+
+/** กู้รายการที่เพิ่งลบกลับมา (id เดิม — ความเชื่อมโยง parentId ไม่เสีย) */
+export async function restoreTxs(rows: Tx[]): Promise<void> {
+  await db.tx.bulkAdd(rows);
+}
+
+export interface TxPatch {
+  amount?: Satang;
+  categoryId?: number;
+  pocketId?: number;
+  toPocketId?: number;
+  note?: string;
+  date?: string;
+}
+
+/**
+ * แก้ไขรายการ — ถ้าเป็นรายรับที่ถูกแบ่งอัตโนมัติและยอด/วันที่/กล่องเปลี่ยน
+ * จะลบการแบ่งเดิมแล้วแบ่งใหม่ตามกฎปัจจุบัน ให้ยอดกล่องถูกเสมอ
+ */
+export async function updateTx(id: number, patch: TxPatch): Promise<void> {
+  await db.transaction("rw", [db.tx, db.pockets], async () => {
+    const t = await db.tx.get(id);
+    if (!t) return;
+    await db.tx.update(id, patch);
+    if (t.type !== "IN") return;
+    const children = await db.tx.filter((x) => x.parentId === id).toArray();
+    if (children.length === 0) return;
+    const next = { ...t, ...patch };
+    if (
+      next.amount !== t.amount ||
+      next.date !== t.date ||
+      next.pocketId !== t.pocketId
+    ) {
+      await db.tx.bulkDelete(children.map((c) => c.id!));
+      await createAutoAllocations(id, next.amount, next.pocketId, next.date);
     }
   });
 }
