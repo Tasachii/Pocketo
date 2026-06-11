@@ -1,4 +1,5 @@
 import type { PocketoDB } from "../db/db";
+import { encryptBackup } from "./crypto";
 import type { Category, Pocket, Recurring, Tx } from "./types";
 
 export interface BackupFile {
@@ -30,15 +31,25 @@ export async function exportData(db: PocketoDB): Promise<BackupFile> {
   };
 }
 
-/** ดาวน์โหลดไฟล์ backup และจดเวลาส่งออกล่าสุด (ใช้โดยปุ่มตั้งค่าและ banner เตือน) */
-export async function downloadBackup(db: PocketoDB): Promise<void> {
+/**
+ * ดาวน์โหลดไฟล์ backup และจดเวลาส่งออกล่าสุด (ใช้โดยปุ่มตั้งค่าและ banner เตือน)
+ * ถ้าใส่ passphrase จะเข้ารหัสไฟล์ด้วย AES-GCM ก่อนดาวน์โหลด
+ */
+export async function downloadBackup(
+  db: PocketoDB,
+  passphrase?: string,
+): Promise<void> {
   const data = await exportData(db);
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
+  const payload = passphrase
+    ? await encryptBackup(data, passphrase)
+    : data;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json",
   });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `pocketo-backup-${new Date().toLocaleDateString("en-CA")}.json`;
+  const tag = passphrase ? "encrypted-" : "";
+  a.download = `pocketo-${tag}backup-${new Date().toLocaleDateString("en-CA")}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
   await db.kv.put({ key: "lastExport", value: Date.now() });

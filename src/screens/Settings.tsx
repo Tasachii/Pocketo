@@ -1,9 +1,10 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { confirmDialog, showToast } from "../components/Feedback";
+import { confirmDialog, promptDialog, showToast } from "../components/Feedback";
 import { Field, inputCls, Overlay } from "../components/Modal";
 import { RecurringManager } from "../components/RecurringManager";
 import { downloadBackup, importData } from "../core/backup";
+import { decryptBackup, isEncryptedBackup } from "../core/crypto";
 import { fmt, fmtBaht, parseAmount } from "../core/money";
 import type { Category, KakeiboGroup } from "../core/types";
 import { KAKEIBO_LABEL } from "../core/types";
@@ -37,13 +38,42 @@ export function Settings({
   }, []);
 
   const doExport = async () => {
-    await downloadBackup(db);
+    const wantEncrypt = await confirmDialog("ใส่รหัสผ่านป้องกันไฟล์ backup?", {
+      detail:
+        "ถ้าใส่รหัสผ่าน ไฟล์จะถูกเข้ารหัส เปิดได้เฉพาะคนที่รู้รหัส — แต่ถ้าลืมรหัสจะกู้ไม่ได้",
+      confirmLabel: "ใส่รหัสผ่าน",
+    });
+    let passphrase: string | undefined;
+    if (wantEncrypt) {
+      const pw = await promptDialog("ตั้งรหัสผ่านสำหรับไฟล์นี้", {
+        password: true,
+        placeholder: "รหัสผ่าน",
+        confirmLabel: "เข้ารหัสและบันทึก",
+      });
+      if (pw == null) return; // ยกเลิก
+      if (pw.length < 4) {
+        setMsg("รหัสผ่านสั้นเกินไป (อย่างน้อย 4 ตัว)");
+        return;
+      }
+      passphrase = pw;
+    }
+    await downloadBackup(db, passphrase);
     showToast("ส่งออกไฟล์ backup แล้ว");
   };
 
   const doImport = async (file: File) => {
     try {
-      const data = JSON.parse(await file.text());
+      let data: unknown = JSON.parse(await file.text());
+      if (isEncryptedBackup(data)) {
+        const pw = await promptDialog("ไฟล์นี้ถูกเข้ารหัส", {
+          detail: "ใส่รหัสผ่านเพื่อปลดล็อก",
+          password: true,
+          placeholder: "รหัสผ่าน",
+          confirmLabel: "ปลดล็อก",
+        });
+        if (pw == null) return;
+        data = await decryptBackup(data, pw); // โยน error ถ้ารหัสผิด
+      }
       const ok = await confirmDialog("นำเข้าข้อมูลจากไฟล์?", {
         detail: "ข้อมูลทั้งหมดที่มีอยู่ตอนนี้จะถูกแทนที่ด้วยข้อมูลในไฟล์",
         confirmLabel: "นำเข้า",

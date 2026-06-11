@@ -1,7 +1,7 @@
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 /**
- * confirm dialog + undo toast แบบ global — แทน window.confirm ของระบบ
+ * confirm / prompt dialog + undo toast แบบ global — แทน window.confirm/prompt ของระบบ
  * ใช้ store เล็กๆ ในโมดูล ไม่ต้องลาก state ผ่านทุกชั้น
  */
 
@@ -13,6 +13,15 @@ interface ConfirmReq {
   resolve: (ok: boolean) => void;
 }
 
+interface PromptReq {
+  message: string;
+  detail?: string;
+  placeholder?: string;
+  password?: boolean;
+  confirmLabel?: string;
+  resolve: (value: string | null) => void;
+}
+
 interface Toast {
   id: number;
   message: string;
@@ -20,6 +29,7 @@ interface Toast {
 }
 
 let confirmReq: ConfirmReq | null = null;
+let promptReq: PromptReq | null = null;
 let toasts: Toast[] = [];
 let version = 0;
 const listeners = new Set<() => void>();
@@ -42,6 +52,21 @@ export function confirmDialog(
   });
 }
 
+export function promptDialog(
+  message: string,
+  opts?: {
+    detail?: string;
+    placeholder?: string;
+    password?: boolean;
+    confirmLabel?: string;
+  },
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    promptReq = { message, ...opts, resolve };
+    emit();
+  });
+}
+
 let toastSeq = 0;
 export function showToast(message: string, undo?: () => void): void {
   const t: Toast = { id: ++toastSeq, message, undo };
@@ -55,12 +80,21 @@ export function showToast(message: string, undo?: () => void): void {
 
 export function Feedback() {
   useSyncExternalStore(subscribe, () => version);
+  const [promptValue, setPromptValue] = useState("");
 
   const close = (ok: boolean) => {
     const r = confirmReq;
     confirmReq = null;
     emit();
     r?.resolve(ok);
+  };
+
+  const closePrompt = (value: string | null) => {
+    const r = promptReq;
+    promptReq = null;
+    setPromptValue("");
+    emit();
+    r?.resolve(value);
   };
 
   const dismissToast = (t: Toast, undo: boolean) => {
@@ -104,6 +138,51 @@ export function Feedback() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {promptReq && (
+        <div
+          className="fade fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-8"
+          onClick={() => closePrompt(null)}
+        >
+          <form
+            className="sheet w-full max-w-xs rounded-3xl bg-bg p-5"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              closePrompt(promptValue);
+            }}
+          >
+            <p className="font-medium">{promptReq.message}</p>
+            {promptReq.detail && (
+              <p className="pt-2 text-sm text-sub">{promptReq.detail}</p>
+            )}
+            <input
+              autoFocus
+              type={promptReq.password ? "password" : "text"}
+              value={promptValue}
+              onChange={(e) => setPromptValue(e.target.value)}
+              placeholder={promptReq.placeholder}
+              className="mt-3 w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px]"
+            />
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => closePrompt(null)}
+                className="pressable flex-1 rounded-2xl bg-surface2 py-2.5 text-sm font-medium"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                className="pressable flex-1 rounded-2xl py-2.5 text-sm font-semibold text-white"
+                style={{ background: "var(--accent)" }}
+              >
+                {promptReq.confirmLabel ?? "ตกลง"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "icons": "node scripts/gen-icons.mjs"
+    "icons": "node scripts/gen-icons.mjs",
+    "og": "node scripts/gen-og.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.11",
@@ -18,6 +19,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "^1.60.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
