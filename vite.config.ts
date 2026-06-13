@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? "/pocketo/" : "/",
+  base: mode === "production" ? "/Pocketo/" : "/",
   plugins: [
     react(),
     VitePWA({

@@ -18,7 +18,7 @@ export function TxEditor({
   pockets: Pocket[];
   onClose: () => void;
 }) {
-  const { t } = useT();
+  const { t, name: tName } = useT();
   const [amountStr, setAmountStr] = useState(fmt(tx.amount));
   const [categoryId, setCategoryId] = useState(tx.categoryId);
   const [pocketId, setPocketId] = useState(tx.pocketId);
@@ -93,7 +93,7 @@ export function TxEditor({
               >
                 {cats.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.icon} {c.name}
+                    {c.icon} {tName(c.name)}
                   </option>
                 ))}
               </select>
@@ -106,7 +106,7 @@ export function TxEditor({
               >
                 {pockets.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.icon} {p.name}
+                    {p.icon} {tName(p.name)}
                   </option>
                 ))}
               </select>
@@ -124,7 +124,7 @@ export function TxEditor({
               >
                 {pockets.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.icon} {p.name}
+                    {p.icon} {tName(p.name)}
                   </option>
                 ))}
               </select>
@@ -137,7 +137,7 @@ export function TxEditor({
               >
                 {pockets.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.icon} {p.name}
+                    {p.icon} {tName(p.name)}
                   </option>
                 ))}
               </select>

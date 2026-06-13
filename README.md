@@ -7,7 +7,7 @@
 
 Minimal Japanese-inspired income & expense tracker — an installable PWA with kakeibo-style reports, money pockets with auto-allocation, and a Thai personal income tax estimator. All data stays on your device.
 
-**Live app:** https://tasachii.github.io/pocketo/
+**Live app:** https://tasachii.github.io/Pocketo/
 
 **Docs:** [PROJECT_GUIDE.md](PROJECT_GUIDE.md) (how the code works, file by file) · [CONTRIBUTING.md](CONTRIBUTING.md) (read before changing code — conventions & gotchas) · [DESCRIPTION.md](DESCRIPTION.md) (concept, class diagram) · [ROADMAP.md](ROADMAP.md) (what to build next) · [PRIVACY.md](PRIVACY.md) · [CHANGELOG.md](CHANGELOG.md)
 
@@ -38,7 +38,7 @@ It is a static web app: no server, no account, no tracking. Everything lives in 
 
 No install step is needed — it's a web app:
 
-1. Open **https://tasachii.github.io/pocketo/**
+1. Open **https://tasachii.github.io/Pocketo/**
 2. - **iPhone/iPad (Safari):** Share button → **Add to Home Screen**
    - **Android (Chrome):** ⋮ menu → **Install app**
    - **Desktop (Chrome/Edge):** install icon in the address bar
@@ -61,7 +61,7 @@ Other scripts:
 npm test           # unit tests (Vitest, 77 tests)
 npm run test:e2e   # e2e + a11y (Playwright; first time: npx playwright install chromium)
 npm run build      # type-check + production build into dist/
-npm run preview    # serve the production build (http://localhost:4173/pocketo/)
+npm run preview    # serve the production build (http://localhost:4173/Pocketo/)
 npm run icons      # regenerate PWA icons (zero-dependency PNG writer)
 npm run og         # regenerate the Open Graph preview image
 node scripts/capture-screens.mjs   # regenerate doc screenshots (dev server on :5201 required)

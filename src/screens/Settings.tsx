@@ -20,7 +20,7 @@ export function Settings({
   mode: ThemeMode;
   setMode: (m: ThemeMode) => void;
 }) {
-  const { t, lang } = useT();
+  const { t, name: tName, lang } = useT();
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
   const fileRef = useRef<HTMLInputElement>(null);
@@ -249,7 +249,7 @@ export function Settings({
                   className="pressable flex w-full items-center gap-3 px-1 py-1.5 text-left text-sm"
                 >
                   <span>{c.icon}</span>
-                  <span className="flex-1">{c.name}</span>
+                  <span className="flex-1">{tName(c.name)}</span>
                   {(c.budget ?? 0) > 0 && (
                     <span className="tabular text-xs text-sub">
                       {t("set_budgetTag", { amount: fmtBaht(c.budget!) })}
@@ -312,8 +312,8 @@ function CategoryDialog({
   inUse: boolean;
   onClose: () => void;
 }) {
-  const { t } = useT();
-  const [name, setName] = useState(category.name);
+  const { t, name: tName } = useT();
+  const [name, setName] = useState(tName(category.name));
   const [icon, setIcon] = useState(category.icon);
   const [group, setGroup] = useState<KakeiboGroup>(category.group ?? "wants");
   const [budgetStr, setBudgetStr] = useState(
@@ -340,7 +340,7 @@ function CategoryDialog({
       return;
     }
     if (
-      await confirmDialog(t("cat_confirmDelete", { name: category.name }), {
+      await confirmDialog(t("cat_confirmDelete", { name: tName(category.name) }), {
         confirmLabel: t("delete"),
         danger: true,
       })

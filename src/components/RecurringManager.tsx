@@ -22,7 +22,7 @@ function freqLabel(r: Recurring, tr: Translator): string {
 /** จัดการรายการประจำรายเดือน (เงินเดือน ค่าเช่า subscription ฯลฯ) */
 export function RecurringManager() {
   const tr = useT();
-  const { t } = tr;
+  const { t, name: tName } = tr;
   const rules = useLiveQuery(() => db.recurring.toArray(), []) ?? [];
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const [editing, setEditing] = useState<Recurring | "new" | null>(null);
@@ -46,7 +46,7 @@ export function RecurringManager() {
       <ul className="space-y-1">
         {rules.map((r) => {
           const cat = r.categoryId != null ? catById.get(r.categoryId) : undefined;
-          const name = r.note || cat?.name || t("rec_defaultName");
+          const name = r.note || (cat ? tName(cat.name) : t("rec_defaultName"));
           return (
             <li key={r.id} className="flex items-center gap-3 py-1.5">
               <button
@@ -120,7 +120,7 @@ function RecurringDialog({
     useLiveQuery(() => db.pockets.orderBy("sortOrder").toArray(), []) ?? [];
   const main = pockets.find((p) => p.isMain);
 
-  const { t, weekday, shortMonth } = useT();
+  const { t, name: tName, weekday, shortMonth } = useT();
   const [type, setType] = useState<"IN" | "OUT">(rule?.type ?? "OUT");
   const [amountStr, setAmountStr] = useState(rule ? fmt(rule.amount) : "");
   const [categoryId, setCategoryId] = useState(rule?.categoryId);
@@ -297,7 +297,7 @@ function RecurringDialog({
             >
               {cats.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.icon} {c.name}
+                  {c.icon} {tName(c.name)}
                 </option>
               ))}
             </select>
@@ -310,7 +310,7 @@ function RecurringDialog({
             >
               {pockets.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.icon} {p.name}
+                  {p.icon} {tName(p.name)}
                 </option>
               ))}
             </select>

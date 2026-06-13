@@ -31,7 +31,7 @@ export function Home({
   themeMode: ThemeMode;
   onCycleTheme: () => void;
 }) {
-  const { t, date: fmtDate } = useT();
+  const { t, name: tName, date: fmtDate } = useT();
   const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
   const pockets =
     useLiveQuery(() => db.pockets.orderBy("sortOrder").toArray(), []) ?? [];
@@ -113,11 +113,11 @@ export function Home({
   const txLabel = (tx: Tx): { icon: string; name: string } => {
     if (tx.type === "TRANSFER") {
       const to = tx.toPocketId != null ? pocketById.get(tx.toPocketId) : undefined;
-      return { icon: "", name: t("home_transferTo", { name: to?.name ?? "?" }) };
+      return { icon: "", name: t("home_transferTo", { name: to ? tName(to.name) : "?" }) };
     }
     if (tx.type === "INIT") return { icon: "", name: t("home_initBalance") };
     const c = tx.categoryId != null ? catById.get(tx.categoryId) : undefined;
-    return { icon: c?.icon ?? "", name: c?.name ?? t("home_uncategorized") };
+    return { icon: c?.icon ?? "", name: c ? tName(c.name) : t("home_uncategorized") };
   };
 
   return (
@@ -177,7 +177,7 @@ export function Home({
                   <span className="text-base">{p.icon}</span>
                 </EnsoRing>
                 <div>
-                  <p className="text-xs text-sub">{p.name}</p>
+                  <p className="text-xs text-sub">{tName(p.name)}</p>
                   <p className="tabular font-zen text-sm font-medium">
                     {fmtBaht(bal)}
                   </p>
@@ -202,7 +202,7 @@ export function Home({
                 <li key={r.id} className="flex items-center gap-3 px-2 py-1.5">
                   <IconRepeat size={14} className="shrink-0 text-faint" />
                   <span className="min-w-0 flex-1 truncate text-sm text-sub">
-                    {r.note || cat?.name || t("rec_defaultName")}
+                    {r.note || (cat ? tName(cat.name) : t("rec_defaultName"))}
                   </span>
                   <span className="text-xs text-faint">{fmtDate(next)}</span>
                   <span

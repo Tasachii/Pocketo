@@ -24,7 +24,7 @@ export function QuickAdd({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { t } = useT();
+  const { t, name: tName } = useT();
   const main = pockets.find((p) => p.isMain);
   const [dir, setDir] = useState<TxDir>("OUT");
   const [amountStr, setAmountStr] = useState("");
@@ -175,7 +175,7 @@ export function QuickAdd({
                 >
                   <span className="text-2xl">{c.icon}</span>
                   <span className="text-[11px] leading-tight text-sub">
-                    {c.name}
+                    {tName(c.name)}
                   </span>
                 </button>
               ))}
@@ -201,7 +201,7 @@ export function QuickAdd({
                           : { borderColor: "var(--line)", color: "var(--sub)" }
                       }
                     >
-                      {p.icon} {p.name}
+                      {p.icon} {tName(p.name)}
                     </button>
                   ))}
                 </div>

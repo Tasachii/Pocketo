@@ -20,7 +20,7 @@ const PAGE = 100;
 
 /** ประวัติรายการทั้งหมด: ค้นหา + กรองชนิด + แตะเพื่อแก้ไข */
 export function History({ onClose }: { onClose: () => void }) {
-  const { t, date: fmtDate, monthYear } = useT();
+  const { t, name: tName, date: fmtDate, monthYear } = useT();
   const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const pockets = useLiveQuery(() => db.pockets.toArray(), []) ?? [];
@@ -55,9 +55,9 @@ export function History({ onClose }: { onClose: () => void }) {
           tx.categoryId != null ? catById.get(tx.categoryId) : undefined;
         const hay = [
           tx.note ?? "",
-          cat?.name ?? "",
+          cat ? tName(cat.name) : "",
           fmt(tx.amount),
-          pocketById.get(tx.pocketId)?.name ?? "",
+          tName(pocketById.get(tx.pocketId)?.name ?? ""),
         ]
           .join(" ")
           .toLowerCase();
@@ -155,12 +155,14 @@ export function History({ onClose }: { onClose: () => void }) {
                     ? t("home_transferTo", {
                         name:
                           tx.toPocketId != null
-                            ? (pocketById.get(tx.toPocketId)?.name ?? "?")
+                            ? tName(pocketById.get(tx.toPocketId)?.name ?? "?")
                             : "?",
                       })
                     : tx.type === "INIT"
                       ? t("home_initBalance")
-                      : (cat?.name ?? t("home_uncategorized"));
+                      : cat
+                        ? tName(cat.name)
+                        : t("home_uncategorized");
                   return (
                     <li key={tx.id}>
                       <button

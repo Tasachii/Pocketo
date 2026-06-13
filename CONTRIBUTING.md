@@ -70,7 +70,7 @@ belongs to the user and should travel in a backup belongs in IndexedDB.
 `playwright.config.ts` builds and serves `npm run preview` (not `npm run dev`). Reasons:
 no React StrictMode double-invoke, no HMR/on-the-fly transform flakiness, deterministic.
 Service workers are **blocked** in the Playwright context (`serviceWorkers: "block"`) so
-reload-persistence assertions don't race the PWA SW. The base path in preview is `/pocketo/`,
+reload-persistence assertions don't race the PWA SW. The base path in preview is `/Pocketo/`,
 so `baseURL` includes it.
 
 ### e2e assumes the default language is Thai
@@ -160,9 +160,9 @@ has one).
 ## Release / deploy
 
 `main` is always deployable. Pushing to `main` triggers CI and, on success, the deploy
-workflow builds `dist/` (base path `/pocketo/`) and publishes it to GitHub Pages via
+workflow builds `dist/` (base path `/Pocketo/`) and publishes it to GitHub Pages via
 `actions/deploy-pages`. There is no manual deploy step. To preview a production build locally:
-`npm run build && npm run preview` → http://localhost:4173/pocketo/.
+`npm run build && npm run preview` → http://localhost:4173/Pocketo/.
 
 ---
 

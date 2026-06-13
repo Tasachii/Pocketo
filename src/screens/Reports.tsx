@@ -17,7 +17,7 @@ const GROUP_COLORS: Record<KakeiboGroup, string> = {
 };
 
 export function Reports() {
-  const { t, shortMonth, monthYear } = useT();
+  const { t, name: tName, shortMonth, monthYear } = useT();
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const catById = useMemo(
     () => new Map(categories.map((c) => [c.id!, c])),
@@ -81,14 +81,14 @@ export function Reports() {
     const top = sorted.slice(0, 5);
     const rest = sorted.slice(5).reduce((s, [, v]) => s + v, 0);
     const slices: DonutSlice[] = top.map(([id, v], i) => ({
-      label: catById.get(id)?.name ?? "?",
+      label: tName(catById.get(id)?.name ?? "?"),
       value: v,
       color: CHART_COLORS[i % CHART_COLORS.length],
     }));
     if (rest > 0)
       slices.push({ label: t("rp_remaining"), value: rest, color: "var(--faint)" });
     return { slices, legend: slices };
-  }, [spentByCat, catById]);
+  }, [spentByCat, catById, t, tName]);
 
   // หมวดที่ตั้งงบประมาณไว้
   const budgetCats = useMemo(
@@ -150,7 +150,7 @@ export function Reports() {
         .slice(0, 4)
         .map(([id, amount]) => ({
           icon: catById.get(id)?.icon ?? "",
-          name: catById.get(id)?.name ?? "?",
+          name: tName(catById.get(id)?.name ?? "?"),
           amount,
         }));
       const blob = await renderShareCard({
@@ -258,7 +258,7 @@ export function Reports() {
                 <div key={c.id}>
                   <div className="flex justify-between pb-1 text-sm">
                     <span>
-                      {c.icon} {c.name}
+                      {c.icon} {tName(c.name)}
                     </span>
                     <span className="tabular text-sub">
                       {fmtBaht(spent)} / {fmtBaht(c.budget!)}

@@ -341,7 +341,7 @@ npm run dev        # Vite dev server (http://localhost:5173)
 npm test           # unit tests (Vitest) — the core engines
 npm run test:e2e   # Playwright e2e + a11y, against a production preview build
 npm run build      # type-check (tsc) + production build into dist/
-npm run preview    # serve the production build at /pocketo/
+npm run preview    # serve the production build at /Pocketo/
 npm run icons      # regenerate PWA icons
 npm run og         # regenerate the Open Graph image
 node scripts/capture-screens.mjs   # regenerate doc screenshots (dev server on :5201)
@@ -356,7 +356,7 @@ crucially it runs against a production preview (not the dev server) so there is 
 double-invoke or HMR flakiness. Service workers are blocked during e2e so reload-persistence
 assertions are deterministic.
 
-**Deploy.** The app is static. `npm run build` produces `dist/` with base path `/pocketo/`;
+**Deploy.** The app is static. `npm run build` produces `dist/` with base path `/Pocketo/`;
 it is published to GitHub Pages.
 
 ## 10. How to extend it

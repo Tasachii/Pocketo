@@ -13,7 +13,7 @@ import { db } from "../db/db";
 const POCKET_ICONS = ["💰", "🏦", "📈", "✈️", "🎓", "🏠", "🚗", "💍", "🎮", "🧧", "🌱", "🛡️"];
 
 export function Pockets() {
-  const { t } = useT();
+  const { t, name: tName } = useT();
   const pockets =
     useLiveQuery(() => db.pockets.orderBy("sortOrder").toArray(), []) ?? [];
   const txs = useLiveQuery(() => db.tx.toArray(), []) ?? [];
@@ -74,7 +74,7 @@ export function Pockets() {
               </EnsoRing>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="truncate font-medium">{p.name}</p>
+                  <p className="truncate font-medium">{tName(p.name)}</p>
                   {p.isMain === 1 && (
                     <span className="rounded-full bg-surface2 px-2 py-0.5 text-[10px] text-sub">
                       {t("pk_main")}
@@ -142,8 +142,8 @@ function PocketDialog({
   txCount: (id: number) => number;
   onClose: () => void;
 }) {
-  const { t } = useT();
-  const [name, setName] = useState(pocket?.name ?? "");
+  const { t, name: tName } = useT();
+  const [name, setName] = useState(pocket ? tName(pocket.name) : "");
   const [icon, setIcon] = useState(pocket?.icon ?? POCKET_ICONS[0]);
   const [goalStr, setGoalStr] = useState(
     pocket?.goal ? fmt(pocket.goal) : "",
@@ -207,7 +207,7 @@ function PocketDialog({
       return;
     }
     if (
-      await confirmDialog(t("pk_confirmDelete", { name: pocket.name }), {
+      await confirmDialog(t("pk_confirmDelete", { name: tName(pocket.name) }), {
         confirmLabel: t("delete"),
         danger: true,
       })
@@ -323,7 +323,7 @@ function TransferDialog({
   balances: Map<number, number>;
   onClose: () => void;
 }) {
-  const { t } = useT();
+  const { t, name: tName } = useT();
   const [fromId, setFromId] = useState(pockets[0]?.id);
   const [toId, setToId] = useState(pockets[1]?.id);
   const [amountStr, setAmountStr] = useState("");
@@ -355,7 +355,7 @@ function TransferDialog({
             >
               {pockets.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.icon} {p.name} ({fmt(balances.get(p.id!) ?? 0)})
+                  {p.icon} {tName(p.name)} ({fmt(balances.get(p.id!) ?? 0)})
                 </option>
               ))}
             </select>
@@ -368,7 +368,7 @@ function TransferDialog({
             >
               {pockets.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.icon} {p.name}
+                  {p.icon} {tName(p.name)}
                 </option>
               ))}
             </select>
