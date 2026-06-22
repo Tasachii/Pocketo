@@ -1,6 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
 import { useT } from "../i18n";
+import { Mark } from "../brand/Mark";
 import { EnsoRing } from "../components/EnsoRing";
 import { showToast } from "../components/Feedback";
 import {
@@ -124,9 +125,12 @@ export function Home({
     <div>
       {/* wordmark — จุดเดียวที่มี katakana */}
       <header className="rise flex items-center justify-between pt-2">
-        <div className="flex items-baseline gap-2">
-          <h1 className="font-zen text-xl font-bold tracking-tight">Pocketo</h1>
-          <span className="font-mincho text-sm text-faint">ポケット</span>
+        <div className="flex items-center gap-2.5">
+          <Mark size={26} />
+          <div className="flex items-baseline gap-2">
+            <h1 className="font-zen text-xl font-bold tracking-tight">Pocketo</h1>
+            <span className="font-mincho text-sm text-faint">ポケット</span>
+          </div>
         </div>
         <button
           onClick={onCycleTheme}

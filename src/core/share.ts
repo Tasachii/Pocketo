@@ -24,6 +24,7 @@ const SUB = "#a6a39b";
 const FAINT = "#6e6b64";
 const LINE = "#2c2c33";
 const ACCENT = "#e84b3c";
+const COIN = "#f3d27a"; // 金 ทองในโลโก้ (การ์ดแชร์เป็นธีมหมึกเสมอ)
 const INCOME = "#8fbf8f";
 const EXPENSE = "#e07b6f";
 const GROUP_COLORS: Record<KakeiboGroup, string> = {
@@ -140,14 +141,30 @@ export async function renderShareCard(data: ShareCardData): Promise<Blob> {
     y += 64;
   }
 
-  // footer: วงเปิดปลาย + url
+  // footer: โลโก้ (วงเอ็นโซเปิดปลาย + เหรียญทอง) + url
   const fy = H - 80;
+  const ringCx = M + 28;
+  const ringCy = fy - 10;
+  const ringR = 28;
   ctx.strokeStyle = ACCENT;
   ctx.lineWidth = 7;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.arc(M + 28, fy - 10, 28, -0.9, Math.PI * 2 - 1.7);
+  ctx.arc(ringCx, ringCy, ringR, -0.9, Math.PI * 2 - 1.7);
   ctx.stroke();
+  // เหรียญทองหยอดลงปากวง — สัดส่วนเดียวกับโลโก้ (เหรียญที่มุมเปิดของวง)
+  const coinAng = (Math.PI * 2 - 1.7 + (-0.9 + Math.PI * 2)) / 2;
+  const coinDist = ringR * (39 / 30);
+  ctx.fillStyle = COIN;
+  ctx.beginPath();
+  ctx.arc(
+    ringCx + coinDist * Math.cos(coinAng),
+    ringCy + coinDist * Math.sin(coinAng),
+    ringR * (6.6 / 30),
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
   ctx.fillStyle = FAINT;
   ctx.font = `400 32px ${ZEN}`;
   ctx.fillText("tasachii.github.io/pocketo", M + 90, fy);

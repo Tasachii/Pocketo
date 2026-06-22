@@ -2,6 +2,7 @@
 // ใช้: node scripts/gen-og.mjs  (ไม่ต้องมี dev server)
 import { mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
+import { markInner } from "./brand-mark.mjs";
 
 mkdirSync("public", { recursive: true });
 
@@ -35,11 +36,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8">
     <h1>จดรายรับรายจ่าย<br><span class="a">แบบ kakeibo</span></h1>
     <p>แบ่งกล่องเงิน · คำนวณภาษีไทย · ข้อมูลอยู่ในเครื่องคุณ</p>
   </div>
-  <svg width="300" height="300" viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="38" fill="none" stroke="#e84b3c" stroke-width="7"
-      stroke-linecap="round" stroke-dasharray="218 240"
-      transform="rotate(-90 50 50)"/>
-  </svg>
+  <svg width="300" height="300" viewBox="0 0 100 100">${markInner("#e84b3c", "#f3d27a")}</svg>
 </div>
 <div class="url">tasachii.github.io/pocketo</div>
 </body></html>`;

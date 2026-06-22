@@ -75,6 +75,7 @@ export default defineConfig(({ mode }) => ({
         "src/main.tsx",
         "src/test/**",
         "src/components/Icons.tsx",
+        "src/brand/**",
       ],
       thresholds: {
         // floor ทั้งโปรเจกต์ (CI-gating) — ขยับขึ้นได้เมื่อ coverage โตขึ้น
