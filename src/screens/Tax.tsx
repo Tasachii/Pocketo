@@ -75,7 +75,7 @@ export function Tax() {
     const switchingYear = loaded.current;
     loaded.current = false;
     let cancelled = false;
-    db.kv.get(`tax-${year}`).then((row) => {
+    void db.kv.get(`tax-${year}`).then((row) => {
       if (cancelled) return;
       const stored = (row?.value as Record<string, string>) ?? {};
       setForm((prev) => (switchingYear ? stored : { ...stored, ...prev }));

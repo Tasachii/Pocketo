@@ -31,3 +31,10 @@ describe("fmt", () => {
     expect(fmt(30)).toBe("0.30");
   });
 });
+
+describe("bahtToSatang — การปัดเศษ", () => {
+  it("ปัดเป็นสตางค์ที่ใกล้ที่สุด (Math.round): 12.345 → 1235", () => {
+    expect(bahtToSatang(12.345)).toBe(1_235);
+    expect(bahtToSatang(12.344)).toBe(1_234);
+  });
+});

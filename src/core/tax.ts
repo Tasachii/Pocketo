@@ -159,7 +159,7 @@ export function calcThaiTax(
     "ss",
   );
 
-  let lifeInsurance = cap(
+  const lifeInsurance = cap(
     d.lifeInsurance,
     config.lifeInsuranceCap,
     "life",

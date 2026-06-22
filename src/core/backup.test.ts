@@ -1,6 +1,9 @@
+// @vitest-environment jsdom
+// downloadBackup ใช้ DOM (createElement('a'), URL.createObjectURL) — ต้อง jsdom
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
-import { exportData, importData, validateBackup } from "./backup";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { downloadBackup, exportData, importData, validateBackup } from "./backup";
+import { isEncryptedBackup } from "./crypto";
 import { PocketoDB, seedIfEmpty } from "../db/db";
 
 let db: PocketoDB;
@@ -105,5 +108,68 @@ describe("backup round-trip", () => {
     await db.categories.clear();
     await seedIfEmpty(db);
     expect(await db.categories.count()).toBe(0);
+  });
+});
+
+describe("downloadBackup (jsdom DOM path)", () => {
+  let createObjSpy: ReturnType<typeof vi.fn>;
+  let revokeObjSpy: ReturnType<typeof vi.fn>;
+  let clickSpy: ReturnType<typeof vi.fn>;
+  // เก็บ {type, ข้อความ JSON ดิบที่ส่งเข้า Blob} — เลี่ยง blob.text() ที่ jsdom ไม่รองรับ
+  let blobs: Array<{ type: string; text: string }>;
+
+  beforeEach(() => {
+    blobs = [];
+    createObjSpy = vi.fn(() => "blob:sentinel");
+    revokeObjSpy = vi.fn();
+    // jsdom ไม่มี URL.createObjectURL — stub เอง
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjSpy });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjSpy });
+    clickSpy = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(clickSpy);
+    // ดัก parts/type ที่ถูกส่งเข้า Blob — downloadBackup ส่ง [JSON.stringify(...)] เสมอ
+    const RealBlob = globalThis.Blob;
+    vi.spyOn(globalThis, "Blob").mockImplementation((parts?: BlobPart[], opts?: BlobPropertyBag) => {
+      blobs.push({ type: opts?.type ?? "", text: (parts ?? []).join("") });
+      return new RealBlob(parts ?? [], opts);
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("export ธรรมดา: ชื่อไฟล์ pocketo-backup-<en-CA>.json และเขียน kv lastExport", async () => {
+    await seedIfEmpty(db);
+    const downloadSpy = vi.spyOn(HTMLAnchorElement.prototype, "download", "set");
+    await downloadBackup(db);
+
+    const expectDate = new Date().toLocaleDateString("en-CA");
+    expect(downloadSpy).toHaveBeenCalledWith(`pocketo-backup-${expectDate}.json`);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(createObjSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjSpy).toHaveBeenCalledWith("blob:sentinel");
+    expect(typeof (await db.kv.get("lastExport"))?.value).toBe("number");
+  });
+
+  it("Blob เป็น application/json และ parse กลับเป็น backup ได้", async () => {
+    await seedIfEmpty(db);
+    await downloadBackup(db);
+    const blob = blobs.at(-1)!;
+    expect(blob.type).toBe("application/json");
+    const parsed = JSON.parse(blob.text);
+    expect(validateBackup(parsed)).toBe(true);
+  });
+
+  it("export เข้ารหัส: ชื่อไฟล์มี 'encrypted-' และ payload เป็น EncryptedBackup", async () => {
+    await seedIfEmpty(db);
+    const downloadSpy = vi.spyOn(HTMLAnchorElement.prototype, "download", "set");
+    await downloadBackup(db, "hunter2pw");
+
+    expect(downloadSpy).toHaveBeenCalledTimes(1);
+    expect(String(downloadSpy.mock.calls[0][0])).toContain("encrypted-");
+    const parsed = JSON.parse(blobs.at(-1)!.text);
+    expect(isEncryptedBackup(parsed)).toBe(true);
+    expect(parsed.encrypted).toBe(true);
   });
 });

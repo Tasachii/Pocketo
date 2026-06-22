@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useT } from "../i18n";
 import { parseAmount } from "../core/money";
+import { BACKSPACE, pressKey } from "../core/quickadd";
 import type { Category, Pocket } from "../core/types";
 import { saveQuickTx, todayStr } from "../db/data";
 import { IconBack, IconClose } from "./Icons";
@@ -8,7 +9,7 @@ import { IconBack, IconClose } from "./Icons";
 type TxDir = "OUT" | "IN";
 type Step = "amount" | "category";
 
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"];
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", BACKSPACE];
 
 /** จดหนึ่งรายการ ≤ 3 แตะ: ตัวเลข → ถัดไป → แตะหมวด (บันทึกทันที) */
 export function QuickAdd({
@@ -45,7 +46,6 @@ export function QuickAdd({
       setSaving(false);
     }
     // เปิดใหม่ทุกครั้งเริ่มจากศูนย์ — main?.id เปลี่ยนเฉพาะตอน seed ครั้งแรก
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const amount = parseAmount(amountStr || "0");
@@ -61,15 +61,7 @@ export function QuickAdd({
   if (!open) return null;
 
   const press = (k: string) => {
-    setAmountStr((s) => {
-      if (k === "⌫") return s.slice(0, -1);
-      if (k === ".") return s.includes(".") || s === "" ? s : `${s}.`;
-      const next = s + k;
-      const [intPart, frac] = next.split(".");
-      if (intPart.length > 7) return s;
-      if (frac !== undefined && frac.length > 2) return s;
-      return next === "0" ? s : next;
-    });
+    setAmountStr((s) => pressKey(s, k));
   };
 
   const save = async (categoryId: number) => {

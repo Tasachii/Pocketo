@@ -56,8 +56,46 @@ export default defineConfig(({ mode }) => ({
     }),
   ],
   test: {
-    // unit tests = src/**/*.test.ts (Vitest) · e2e = e2e/*.spec.ts (Playwright)
-    include: ["src/**/*.test.ts"],
+    // unit tests = src/**/*.test.{ts,tsx} (Vitest) · e2e = e2e/*.spec.ts (Playwright)
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // node เป็น default (เร็ว สำหรับ core/db math) — เทสต์ที่ต้องใช้ DOM
+    // (component .test.tsx, share-card canvas, download path) ประกาศ jsdom เอง
+    // ด้วย docblock // @vitest-environment jsdom บรรทัดบนสุดของไฟล์
     environment: "node",
+    setupFiles: ["./src/test/setup.ts"],
+    coverage: {
+      // istanbul (ไม่ใช่ v8) — v8 remap ค้างบน Node 23 ในโปรเจกต์นี้
+      provider: "istanbul",
+      reporter: ["text", "html", "lcov"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/i18n/**",
+        "src/vite-env.d.ts",
+        "src/main.tsx",
+        "src/test/**",
+        "src/components/Icons.tsx",
+      ],
+      thresholds: {
+        // floor ทั้งโปรเจกต์ (CI-gating) — ขยับขึ้นได้เมื่อ coverage โตขึ้น
+        lines: 75,
+        branches: 70,
+        functions: 80,
+        // pure math: ไม่มี I/O — ควรเกือบเต็ม
+        "src/core/{allocate,money,tax,recurring,crypto}.ts": {
+          lines: 95,
+          branches: 90,
+          functions: 100,
+        },
+        // canvas: branch ของ layout — ไม่ assert ความเป๊ะระดับพิกเซล
+        "src/core/share.ts": { lines: 80, branches: 70, functions: 100 },
+        // ชั้นข้อมูล: money-moving + persistence — เดิมพันสูง
+        "src/db/{data,db,backup}.ts": {
+          lines: 90,
+          branches: 85,
+          functions: 100,
+        },
+      },
+    },
   },
 }));

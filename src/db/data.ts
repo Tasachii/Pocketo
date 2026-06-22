@@ -174,12 +174,22 @@ export async function transfer(
 ): Promise<void> {
   if (fromId === toId) throw new Error("กล่องต้นทางและปลายทางต้องต่างกัน");
   if (amount <= 0) throw new Error("จำนวนเงินต้องมากกว่า 0");
-  await db.tx.add({
-    type: "TRANSFER",
-    amount,
-    pocketId: fromId,
-    toPocketId: toId,
-    date,
-    createdAt: Date.now(),
+  // guard เงินไม่พอ อยู่ในชั้นข้อมูล (atomic) — invariant คงอยู่ไม่ว่าใครเรียก
+  // คำนวณยอดต้นทางจากรายการในทรานแซกชันเดียวกับการเขียน กัน race
+  await db.transaction("rw", [db.tx, db.pockets], async () => {
+    const [pockets, txs] = await Promise.all([
+      db.pockets.toArray(),
+      db.tx.toArray(),
+    ]);
+    const fromBalance = calcBalances(pockets, txs).get(fromId) ?? 0;
+    if (amount > fromBalance) throw new Error("ยอดในกล่องต้นทางไม่พอ");
+    await db.tx.add({
+      type: "TRANSFER",
+      amount,
+      pocketId: fromId,
+      toPocketId: toId,
+      date,
+      createdAt: Date.now(),
+    });
   });
 }

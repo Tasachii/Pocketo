@@ -191,7 +191,7 @@ export const th = {
   set_setPassword: "ตั้งรหัสผ่านสำหรับไฟล์นี้",
   set_passwordPlaceholder: "รหัสผ่าน",
   set_encryptSave: "เข้ารหัสและบันทึก",
-  set_pwTooShort: "รหัสผ่านสั้นเกินไป (อย่างน้อย 4 ตัว)",
+  set_pwTooShort: "รหัสผ่านสั้นเกินไป (อย่างน้อย 8 ตัว)",
   set_setPasswordBtn: "ใส่รหัสผ่าน",
   set_fileEncrypted: "ไฟล์นี้ถูกเข้ารหัส",
   set_enterPassword: "ใส่รหัสผ่านเพื่อปลดล็อก",

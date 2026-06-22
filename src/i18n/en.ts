@@ -192,7 +192,7 @@ export const en: Dict = {
   set_setPassword: "Set a password for this file",
   set_passwordPlaceholder: "Password",
   set_encryptSave: "Encrypt and save",
-  set_pwTooShort: "Password too short (at least 4 characters)",
+  set_pwTooShort: "Password too short (at least 8 characters)",
   set_setPasswordBtn: "Set a password",
   set_fileEncrypted: "This file is encrypted",
   set_enterPassword: "Enter the password to unlock",

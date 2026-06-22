@@ -99,6 +99,13 @@ describe("dueDates — weekly", () => {
       dueDates({ freq: "weekly", day: 0, since: "2026-06-11" }, "2026-06-20"),
     ).toEqual(["2026-06-14"]); // อาทิตย์แรกหลัง since
   });
+
+  it("B2: weekly ที่ day นอกช่วง 0–6 (เช่น 25) → ว่าง ไม่ loop ไม่จบ", () => {
+    // getDay() คืน 0–6 เสมอ → ไม่มีวันไหน === 25 แต่ cur เพิ่มทีละวันจนเกิน today → []
+    expect(
+      dueDates({ freq: "weekly", day: 25, since: "2026-06-01" }, "2026-06-16"),
+    ).toEqual([]);
+  });
 });
 
 describe("dueDates — yearly", () => {
@@ -121,6 +128,24 @@ describe("dueDates — yearly", () => {
     expect(
       dueDates({ freq: "yearly", day: 25, month: 12, since: "2026-01-01" }, "2026-06-11"),
     ).toEqual([]);
+  });
+
+  it("month (1-12) แมปเป็น month0 ถูกต้อง: month 3 → มีนาคม", () => {
+    expect(
+      dueDates({ freq: "yearly", day: 10, month: 3, since: "2026-01-01" }, "2026-12-31"),
+    ).toEqual(["2026-03-10"]);
+  });
+});
+
+describe("dueDates — ขอบเขตทั่วไป", () => {
+  it("lastPosted === today → ว่าง (ไม่มีอะไรครบกำหนด)", () => {
+    expect(
+      dueDates({ day: 11, since: "2026-05-01", lastPosted: "2026-06-11" }, "2026-06-11"),
+    ).toEqual([]);
+  });
+
+  it("since อยู่ในอนาคตเทียบ today → ว่าง", () => {
+    expect(dueDates({ day: 15, since: "2026-08-01" }, "2026-06-11")).toEqual([]);
   });
 });
 

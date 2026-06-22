@@ -23,5 +23,14 @@ export default defineConfig({
         viewport: { width: 390, height: 844 }, // มือถือ — แอพเป็น mobile-first
       },
     },
+    {
+      // iOS Safari/WebKit — กลุ่มผู้ใช้หลักของ PWA มือถือไทย (canvas.roundRect,
+      // Intl, IndexedDB, env(safe-area-inset-*) มี divergence จริงบน Safari)
+      name: "webkit",
+      use: {
+        browserName: "webkit",
+        viewport: { width: 390, height: 844 },
+      },
+    },
   ],
 });
