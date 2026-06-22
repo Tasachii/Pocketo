@@ -1,104 +1,201 @@
 # Pocketo（ポケット）
 
-![tests](https://img.shields.io/badge/unit_tests-77_passing-2c6e34)
-![e2e](https://img.shields.io/badge/e2e_+_a11y-12_passing-2c6e34)
+![unit tests](https://img.shields.io/badge/unit_tests-131_passing-2c6e34)
+![e2e](https://img.shields.io/badge/e2e_+_a11y-14_tests_%C3%97_chromium%2Bwebkit-2c6e34)
 ![PWA](https://img.shields.io/badge/PWA-offline-3e5c76)
+![0 vulnerabilities](https://img.shields.io/badge/npm_audit-0_vulnerabilities-2c6e34)
 ![license](https://img.shields.io/badge/license-MIT-d9402f)
 
-Minimal Japanese-inspired income & expense tracker — an installable PWA with kakeibo-style reports, money pockets with auto-allocation, and a Thai personal income tax estimator. All data stays on your device.
+Pocketo is a kakeibo (家計簿) income-and-expense tracker that runs entirely in the browser — no server, no account, no tracking. Log a transaction in 3 taps; split income into purpose-driven money pockets automatically; estimate Thai personal income tax bracket by bracket. Data lives in IndexedDB and never leaves the device.
 
-**Live app:** https://tasachii.github.io/Pocketo/
-
-**Docs:** [PROJECT_GUIDE.md](PROJECT_GUIDE.md) (how the code works, file by file) · [CONTRIBUTING.md](CONTRIBUTING.md) (read before changing code — conventions & gotchas) · [DESCRIPTION.md](DESCRIPTION.md) (concept, class diagram) · [ROADMAP.md](ROADMAP.md) (what to build next) · [PRIVACY.md](PRIVACY.md) · [CHANGELOG.md](CHANGELOG.md)
-
-| | | |
-|---|---|---|
-| ![Home dark](docs/screenshots/home-dark.png) | ![Reports](docs/screenshots/reports.png) | ![Pockets](docs/screenshots/pockets.png) |
+**Live** — https://tasachii.github.io/Pocketo/ · **Repo** — https://github.com/Tasachii/pocketo · **Issues** — https://github.com/Tasachii/pocketo/issues
 
 ---
 
-## Project Description
+## Screenshots
 
-Pocketo is a digital *kakeibo* (Japanese household account book). Log a transaction in 3 taps, split incoming money into purpose-driven pockets automatically (savings / investing / travel), keep budgets per category, set up weekly/monthly/yearly recurring items, and estimate your Thai income tax from what you actually logged — bracket by bracket, with a "buy X more SSF/RMF, save Y" simulator.
+| Home (dark) | Home (light) | Quick-add |
+| --- | --- | --- |
+| ![Home dark](docs/screenshots/home-dark.png) | ![Home light](docs/screenshots/home-light.png) | ![Quick-add](docs/screenshots/quick-add.png) |
 
-It is a static web app: no server, no account, no tracking. Everything lives in your browser's IndexedDB (money stored as integer satang, balances always derived from the transaction log) and works fully offline once loaded. Deletes are undo-able, backups are portable JSON (optionally password-encrypted), and the monthly summary can be shared as a PNG card.
+| Reports | Pockets | Tax | Onboarding |
+| --- | --- | --- | --- |
+| ![Reports](docs/screenshots/reports.png) | ![Pockets](docs/screenshots/pockets.png) | ![Tax](docs/screenshots/tax.png) | ![Onboarding](docs/screenshots/onboarding.png) |
 
-- Stack: React 18 · TypeScript (strict) · Vite · Tailwind CSS · Dexie (IndexedDB) · vite-plugin-pwa
-- No chart library, no UI kit — charts are hand-rolled SVG; JS bundle ~110 KB gzip
-- Fully bilingual (Thai / English), dark-first, installable and offline
-- Tested with 77 unit tests (Vitest) on the pure engines and 12 end-to-end + accessibility tests (Playwright)
+---
 
-> **Your data lives only on this device.** There is no cloud copy. Browsers can evict local
-> storage for sites left unused for a long time — so installing the app, granting persistent
-> storage (in Settings), and exporting a JSON backup now and then is the way to keep it safe.
+## What it is
+
+Pocketo is a digital *kakeibo* — a Japanese-style household account book adapted for Thai users. It covers the full personal-finance loop: log income and spending, allocate incoming money into named pockets (savings, travel, investing), track per-category budgets, schedule recurring items (salary, rent, subscriptions), and estimate Thai income tax (bracket-by-bracket, with a "buy X more SSF/RMF, save Y" simulator).
+
+It is a static web app: once loaded it works fully offline. Deletes are undo-able. Backups are portable JSON (optionally AES-GCM encrypted). The monthly summary exports as a shareable PNG card.
+
+- **Stack** — React 18 · TypeScript (strict) · Vite 6 · Tailwind CSS · Dexie 4 (IndexedDB) · vite-plugin-pwa · Vitest · Playwright · axe-core
+- No chart library, no UI kit — charts are hand-rolled SVG
+- Fully bilingual (Thai / English), dark-first, installable offline PWA
+- Money stored as integer satang; balances always derived from the transaction log
 
 ---
 
 ## Installation (use it as an app)
 
-No install step is needed — it's a web app:
+No build step needed — it is a web app. Open the URL, then install it to your home screen:
 
 1. Open **https://tasachii.github.io/Pocketo/**
-2. - **iPhone/iPad (Safari):** Share button → **Add to Home Screen**
+2. Install per platform:
+   - **iPhone / iPad (Safari):** Share button → **Add to Home Screen**
    - **Android (Chrome):** ⋮ menu → **Install app**
-   - **Desktop (Chrome/Edge):** install icon in the address bar
-3. Optional but recommended: Settings → request persistent storage, and export a JSON backup now and then.
+   - **Desktop (Chrome / Edge):** install icon in the address bar
+3. Optional but recommended: open **ตั้งค่า** (Settings) → request persistent storage, and export a JSON backup now and then.
+
+---
 
 ## Running locally
 
-Requires **Node.js 18+** and Git. Same commands on macOS (Terminal) and Windows (PowerShell/CMD); install Node from https://nodejs.org if needed.
+**Requirements** — [Node 20+](https://nodejs.org) · Git
 
-```sh
+**Mac / Linux**
+```bash
 git clone https://github.com/Tasachii/pocketo.git
 cd pocketo
 npm install
-npm run dev        # → http://localhost:5173
+npm run dev        # → http://localhost:5173/
 ```
 
-Other scripts:
-
-```sh
-npm test           # unit tests (Vitest, 77 tests)
-npm run test:e2e   # e2e + a11y (Playwright; first time: npx playwright install chromium)
-npm run build      # type-check + production build into dist/
-npm run preview    # serve the production build (http://localhost:4173/Pocketo/)
-npm run icons      # regenerate PWA icons (zero-dependency PNG writer)
-npm run og         # regenerate the Open Graph preview image
-node scripts/capture-screens.mjs   # regenerate doc screenshots (dev server on :5201 required)
+**Windows**
+```bat
+git clone https://github.com/Tasachii/pocketo.git
+cd pocketo
+npm install
+npm run dev        :: → http://localhost:5173/
 ```
 
 ---
 
-## Tutorial / Usage
+## Running guide
 
-**First launch.** A short welcome walks you through the idea (kakeibo, pockets, tax) and how to install the app. It only shows once.
+```bash
+npm run dev           # start Vite dev server on :5173
+npm run build         # type-check (tsc --noEmit) + bundle to dist/
+npm run preview       # serve the production build at :4173/Pocketo/
+npm test              # unit tests (Vitest, 131 tests)
+npm run test:coverage # unit tests + Istanbul coverage report
+npm run test:e2e      # e2e + a11y (Playwright on chromium + webkit; first run: npx playwright install chromium webkit)
+npm run lint          # ESLint --max-warnings 0
+npm run icons         # regenerate PWA icons (zero-dependency PNG writer)
+npm run og            # regenerate the Open Graph preview image
+```
 
-**Log an expense (3 taps).** Tap the vermilion **+** button → type the amount on the keypad → **ถัดไป** → tap a category. It saves instantly (you'll see a red seal stamp). Note, date, and pocket are optional tweaks on the same screen.
+---
 
-**Log income.** Same flow, but switch the toggle to **รายรับ**. If income goes into the main pocket and you've set allocation rules, it is split into your pockets automatically.
+## Usage
 
-**Pockets (กล่องเงิน tab).** Create pockets with **+**; give each a saving goal (drawn as an ink-circle ring) and/or an auto-allocation percent (e.g. 20% of every income). Transfer between pockets with the ⇄ button. Tap a pocket to edit or delete it.
+**First launch.** A short onboarding walks through kakeibo, pockets, and tax. It only shows once; tap **ข้าม** to skip.
 
-**Budgets.** Settings → tap a category → set a monthly budget. The Reports tab then shows a progress bar that turns amber at 80% and red past 100%.
+**Log an expense (3 taps).** Tap the vermilion **+** button → type the amount on the keypad → **ถัดไป** → tap a category. The entry saves instantly (red seal stamp confirms it). Note, date, and pocket are optional tweaks on the same screen.
 
-**Recurring transactions.** Settings → รายการประจำ → add salary, rent, subscriptions on a weekly / monthly / yearly schedule. Due items are posted automatically when you open the app (missed periods are caught up); upcoming ones appear on the home screen. Toggle a rule off any time.
+**Log income.** Same flow, but switch the toggle to **รายรับ**. If you have auto-allocation rules, income is split into your pockets automatically.
 
-**History & editing.** Home → **ทั้งหมด →** opens the full history: search by category/note/amount/pocket, filter by type, tap any row to edit. Deleting shows a 5-second undo; deleting an auto-allocated income removes its linked transfers too, and undo restores the whole set.
+**Pockets — กล่องเงิน tab.** Tap **เพิ่มกล่อง** to create a pocket; set a saving goal (shown as an ink-circle ring) and/or an auto-allocation percent (e.g. 20% of every income). Transfer between pockets with the ⇄ button.
 
-**Tax (ภาษี tab).** Pull your logged yearly income with one tap (or type it), add withholding tax and deductions — caps are enforced and explained — and read the bracket-by-bracket result, refund/amount due, and marginal savings for extra deductions.
+**Budgets.** **ตั้งค่า** → tap a category → set a monthly budget. The **รายงาน** tab then shows a progress bar that turns amber at 80% and red past 100%.
 
-**Reports & sharing.** Browse months with ◀ ▶; the share icon renders the month (net, top categories, kakeibo pillars) into a PNG card you can share or download.
+**Recurring — รายการประจำ.** **ตั้งค่า** → **รายการประจำ** → add salary, rent, or subscriptions on a weekly / monthly / yearly schedule. Due items post automatically when you open the app; upcoming ones appear on the home screen.
 
-**Backup.** Settings → export writes a JSON file — you can set a password to encrypt it (AES-GCM). Import restores it (replaces everything, with confirmation; asks for the password if the file is encrypted). A banner reminds you if you haven't exported for 30 days.
+**History & editing.** Home → **ทั้งหมด →** opens full history: search by category, note, amount, or pocket; tap any row to edit. Deleting shows a 5-second **เลิกทำ** (undo); deleting an auto-allocated income removes its linked transfers too, and undo restores the whole set.
 
-**Theme.** The icon at the top-right of Home cycles dark → light → system. Dark is the default.
+**Tax — ภาษี tab.** Pull your logged yearly income with one tap (or type it), add withholding tax and deductions — caps are enforced and explained — and read the bracket-by-bracket result, refund/amount due, and marginal savings for extra deductions.
 
-**Language.** The app is fully bilingual (Thai / English). Switch in Settings → Language, or from the toggle on the welcome screen. Dates and the tax year follow the language (Buddhist era in Thai, Gregorian in English); your own category names are kept as you typed them.
+**Reports & sharing — รายงาน tab.** Browse months with ◀ ▶; the share icon renders the month (net, top categories, kakeibo pillars) into a PNG card you can share or download.
+
+**Backup.** **ตั้งค่า** → export writes a JSON file (optional AES-GCM password). Import replaces everything with confirmation. A banner reminds you if you haven't exported for 30 days.
+
+**Theme.** The icon at the top-right of **หน้าแรก** cycles dark → light → system. Dark is the default.
+
+**Language.** Switch in **ตั้งค่า** → Language, or from the toggle on the welcome screen. Dates and the tax year follow the locale (Buddhist era in Thai, Gregorian in English).
+
+---
+
+## Architecture
+
+| Topic | Decision |
+| --- | --- |
+| Storage | IndexedDB via Dexie — survives tab close, holds thousands of rows, works offline. Preferences (theme, last export date) go to `localStorage`. No backend. |
+| Money precision | Integer satang (1 THB = 100 satang) throughout `src/core/money.ts` — eliminates float drift on all arithmetic. |
+| Derived balances | No stored balance field. Every balance is computed from the transaction log, so the log is the single source of truth. |
+| Core / DB / UI split | Correctness-critical logic lives in pure functions in `src/core/` (money, tax, allocation, recurring, backup, crypto) with colocated `.test.ts` files. Database writes are in `src/db/`. React components in `src/components/` and `src/screens/` call those layers; they contain no money math. |
+| Charts | Hand-rolled SVG (`src/components/Donut.tsx` is the model) — no chart library dependency. |
+| Routing | No router — the app is a single-page shell; screens are state-driven. Hash routing not needed because GitHub Pages serves the single HTML file. |
+| Base path | `/Pocketo/` (capital P) in production (`vite.config.ts` `base`). The CI `check-base` step guards this after every build. |
+| PWA / offline | `vite-plugin-pwa` with Workbox runtime caching for Google Fonts (StaleWhileRevalidate for stylesheets, CacheFirst for font files). SW is blocked during e2e runs to avoid flaky reload assertions. |
+| Encryption | AES-GCM via the Web Crypto API (`src/core/crypto.ts`) — no third-party crypto dependency. |
+| Accessibility | axe-core audit via `@axe-core/playwright` runs against every main screen in both dark and light themes on every CI push. One documented brand-accent (vermilion #d9402f) is a known exception below 4.5:1 body-text contrast; it clears the 3:1 UI-component threshold. |
+| Security | CSP in `index.html` (`script-src 'self'`, no `eval`). 0 `npm audit` vulnerabilities. |
+| i18n | `src/i18n/th.ts` · `src/i18n/en.ts` + `useT()` hook. No runtime i18n library. |
+
+---
+
+## Testing
+
+| Layer | Tool | Count | Browsers |
+| --- | --- | --- | --- |
+| Unit (pure core + DB) | Vitest + fake-indexeddb | 131 tests | Node |
+| E2E + accessibility | Playwright + axe-core | 14 tests | Chromium + WebKit (mobile 390×844) |
+
+Coverage thresholds (Istanbul, CI-gated): lines ≥ 75%, branches ≥ 70%, functions ≥ 80%. Pure math modules (`src/core/{allocate,money,tax,recurring,crypto}.ts`) are held to lines ≥ 95%, functions 100%.
+
+---
+
+## Privacy
+
+No server. No account. No analytics. All transactions, pockets, budgets, and recurring rules live in **IndexedDB** on your device. Preferences live in **localStorage**. The only third-party network request is Google Fonts (loaded on first visit, then cached for offline use). See [PRIVACY.md](PRIVACY.md) for the full policy.
+
+> **Your data lives only on this device.** Browsers can evict local storage for sites left unused for a long time. Install the app, grant persistent storage in **ตั้งค่า**, and export a JSON backup periodically.
+
+---
+
+## Roadmap
+
+Near-term (ready to start):
+
+- [ ] Scope `History` and `Home` queries to avoid loading the full transaction table on first paint (performance at 10k+ rows)
+- [ ] Recurring rules: optional end date + "every N" interval
+- [ ] Local reminders — on-open nudges for due recurring items and budget overruns (Notification API, opt-in)
+
+Mid-term:
+
+- [ ] Opt-in cross-device sync (needs a backend decision first — recommended Supabase; local-first core stays untouched)
+- [ ] Bank-statement CSV import with column mapping and duplicate detection
+- [ ] Tax engine phase 2: family allowances (spouse, children, parents), Easy-E-Receipt, income types beyond 40(1)
+
+Long-term / nice-to-have:
+
+- [ ] More report views — net-worth-over-time line, cash-flow forecast, category trends
+- [ ] High-contrast / larger-text accessibility mode
+- [ ] Privacy-respecting usage counter (GoatCounter/Plausible, opt-in, no PII — needs owner decision)
+- [ ] Custom domain
+
+Already shipped (v0.1): income/expense logging, pockets with auto-allocation, kakeibo reports, per-category budgets, recurring (weekly/monthly/yearly with catch-up), Thai tax estimator 40(1), searchable history with edit/undo, encrypted JSON backup, onboarding, dark/light/system themes (WCAG AA), bilingual Thai/English, installable offline PWA, OG preview, CI + auto-deploy.
+
+See [ROADMAP.md](ROADMAP.md) for full detail, effort estimates, and acceptance criteria. See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions before changing code.
+
+---
+
+## Other docs
+
+| File | Contents |
+| --- | --- |
+| [PROJECT_GUIDE.md](PROJECT_GUIDE.md) | How the code works, file by file |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Conventions and gotchas — read before changing code |
+| [DESCRIPTION.md](DESCRIPTION.md) | Concept and class diagram |
+| [ROADMAP.md](ROADMAP.md) | What to build next |
+| [PRIVACY.md](PRIVACY.md) | Full privacy policy |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ---
 
 ## License
 
-[MIT](LICENSE) © Phasathat Jaruchitsophon. Thai tax brackets and deduction caps follow the
-Revenue Department's published structure for tax year 2568; the tax screen is an estimate, not
-filing advice.
+MIT © Phasathat Jaruchitsophon
+
+Thai tax brackets and deduction caps follow the Revenue Department's published structure for tax year 2568. The tax screen is an estimate, not filing advice.
